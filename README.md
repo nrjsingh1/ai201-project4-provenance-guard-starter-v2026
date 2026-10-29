@@ -39,6 +39,27 @@
 <!-- The path a submission takes, from arriving to the label a reader sees.
      Six or seven steps — this is the trace you wrote in Milestone 1. -->
 
+1. **`POST /submit` arrives** — Flask parses the body into a dict.
+2. **The route checks it** — `text` and `creator_id` must be present and within
+   limits, or the caller gets a `4xx` and a `rejected` log entry. Valid text
+   gets a fresh `content_id`.
+3. **Signal one** (`detector.model_signal`) — gpt2 measures how predictable the
+   first ~300 words are → `model_score`.
+4. **Signal two** (`stylometry.style_signal`) — sentence-length spread,
+   vocabulary variety and punctuation variety over the whole text →
+   `style_score`.
+5. **The combining rule** (`scoring.combine_signals`) → `combined_score`.
+6. **The label mapping** (`scoring.score_to_label`) → `guess`, `confidence`,
+   and the sentence the writer reads.
+7. **Logged, then returned** — `audit.log_decision` appends all nine fields
+   with `status: "decided"`, and the writer gets the label, both signal scores
+   and the `content_id` they'd need to appeal.
+
+An appeal (`POST /appeal`) looks up the `content_id`, appends an
+`under_review` entry beside the original decision, and confirms to the writer.
+
+The full trace — both signals' blind spots, the false-positive walk-through,
+and the field-by-field endpoint contracts — is in [TRACE.md](TRACE.md).
 
 
 ---
