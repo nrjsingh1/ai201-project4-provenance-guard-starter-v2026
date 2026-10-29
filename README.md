@@ -142,14 +142,58 @@ and the field-by-field endpoint contracts — is in [TRACE.md](TRACE.md).
      two off the response, so leaving them out costs you next unit's
      diagnostics. -->
 
+<!-- Milestone 3 run: one signal only. guess, label and confidence are
+     placeholders until Milestones 4 and 5. -->
+
 ```bash
 $ curl -X POST http://127.0.0.1:5000/submit \
   -H "Content-Type: application/json" \
-  -d '{"text": "...", "creator_id": "..."}'
+  -d '{"text": "Artificial intelligence is transforming the way we live and work. It offers numerous benefits, including increased efficiency, improved decision-making, and enhanced productivity. However, it is important to consider the potential challenges and ethical implications.", "creator_id": "neeraj"}'
 ```
 
 ```json
+{
+  "combined_score": null,
+  "confidence": 0.0,
+  "content_id": "e23b31c8-b35f-4365-973c-a80a49452ddb",
+  "creator_id": "neeraj",
+  "guess": null,
+  "label": "PLACEHOLDER — labels arrive in Milestone 5.",
+  "model_score": 0.8785,
+  "status": "decided",
+  "style_score": null,
+  "timestamp": "2026-10-29T01:44:12+00:00"
+}
+```
 
+**A refused submission** (empty text — refused, logged, never labelled)
+
+```bash
+$ curl -X POST http://127.0.0.1:5000/submit \
+  -H "Content-Type: application/json" \
+  -d '{"text": "", "creator_id": "x"}'
+```
+
+```json
+{"error": "empty_text", "message": "The 'text' you sent is empty."}
+```
+<!-- HTTP 400 -->
+
+**The log after those requests**
+
+```bash
+$ curl "http://127.0.0.1:5000/log?limit=3"
+```
+
+```json
+{
+  "count": 3,
+  "entries": [
+    {"creator_id": "x", "event": "rejected", "http_status": 413, "reason": "text_too_long", "status": "rejected", "text_length": 20001, "timestamp": "2026-10-29T01:44:13+00:00"},
+    {"creator_id": "unknown", "event": "rejected", "http_status": 400, "reason": "invalid_json", "status": "rejected", "timestamp": "2026-10-29T01:44:13+00:00"},
+    {"combined_score": null, "content_id": "e90aa17b-084f-4010-ac32-8317a5536049", "creator_id": "neeraj", "guess": null, "label": "PLACEHOLDER — labels arrive in Milestone 5.", "model_score": 0.316, "status": "decided", "style_score": null, "timestamp": "2026-10-29T01:44:18+00:00"}
+  ]
+}
 ```
 
 **An appeal**

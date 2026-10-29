@@ -1,0 +1,12 @@
+{"timestamp": "2026-10-29T01:44:12+00:00", "content_id": "e23b31c8-b35f-4365-973c-a80a49452ddb", "creator_id": "neeraj", "guess": null, "model_score": 0.8785, "style_score": null, "combined_score": null, "label": "PLACEHOLDER — labels arrive in Milestone 5.", "status": "decided"}
+{"timestamp": "2026-10-29T01:44:12+00:00", "creator_id": "x", "event": "rejected", "status": "rejected", "reason": "missing_text", "http_status": 400}
+{"timestamp": "2026-10-29T01:44:12+00:00", "creator_id": "x", "event": "rejected", "status": "rejected", "reason": "empty_text", "http_status": 400}
+{"timestamp": "2026-10-29T01:44:12+00:00", "creator_id": "x", "event": "rejected", "status": "rejected", "reason": "empty_text", "http_status": 400}
+{"timestamp": "2026-10-29T01:44:12+00:00", "creator_id": "x", "event": "rejected", "status": "rejected", "reason": "missing_text", "http_status": 400}
+{"timestamp": "2026-10-29T01:44:12+00:00", "creator_id": "x", "event": "rejected", "status": "rejected", "reason": "missing_text", "http_status": 400}
+{"timestamp": "2026-10-29T01:44:13+00:00", "creator_id": "unknown", "event": "rejected", "status": "rejected", "reason": "missing_creator_id", "http_status": 400}
+{"timestamp": "2026-10-29T01:44:13+00:00", "creator_id": "unknown", "event": "rejected", "status": "rejected", "reason": "invalid_json", "http_status": 400}
+{"timestamp": "2026-10-29T01:44:13+00:00", "creator_id": "x", "event": "rejected", "status": "rejected", "reason": "text_too_short", "http_status": 422, "text_length": 2}
+{"timestamp": "2026-10-29T01:44:13+00:00", "creator_id": "x", "event": "rejected", "status": "rejected", "reason": "text_too_long", "http_status": 413, "text_length": 20001}
+{"timestamp": "2026-10-29T01:44:13+00:00", "creator_id": "unknown", "event": "rejected", "status": "rejected", "reason": "invalid_json", "http_status": 400}
+{"timestamp": "2026-10-29T01:44:18+00:00", "content_id": "e90aa17b-084f-4010-ac32-8317a5536049", "creator_id": "neeraj", "guess": null, "model_score": 0.316, "style_score": null, "combined_score": null, "label": "PLACEHOLDER — labels arrive in Milestone 5.", "status": "decided"}

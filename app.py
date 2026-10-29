@@ -199,17 +199,82 @@ def submit():
     what should this do when `text` is missing, empty, or enormous? A crash on
     a malformed input is one of the most common real failures there is.
     """
-    payload = request.get_json(silent=True) or {}
+    import detector
 
-    # TODO: delete this and build the route.
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return _refuse(400, "invalid_json", "Send a JSON object with 'text' and 'creator_id'.")
+
+    creator_id = payload.get("creator_id")
+    if not isinstance(creator_id, str) or not creator_id.strip():
+        return _refuse(400, "missing_creator_id", "Include a 'creator_id' saying who wrote this.")
+    creator_id = creator_id.strip()[:MAX_CREATOR_ID_CHARS]
+
+    text = payload.get("text")
+    if not isinstance(text, str):
+        return _refuse(400, "missing_text", "Include the writing to check as 'text'.", creator_id)
+    text = text.strip()
+    if not text:
+        return _refuse(400, "empty_text", "The 'text' you sent is empty.", creator_id)
+    if len(text) > MAX_TEXT_CHARS:
+        return _refuse(413, "text_too_long",
+                       f"Text can be at most {MAX_TEXT_CHARS:,} characters.", creator_id,
+                       text_length=len(text))
+
+    # Score before minting an id, so a text we can't score never gets one.
+    try:
+        model_score = detector.model_signal(text)
+    except ValueError:
+        return _refuse(422, "text_too_short",
+                       "That's too short to judge. A few sentences at least.", creator_id,
+                       text_length=len(text))
+    except detector.DetectorUnavailable:
+        return _refuse(503, "detector_unavailable",
+                       "The checker isn't available right now. Try again shortly.", creator_id)
+
+    content_id = str(uuid.uuid4())
+
+    # Milestone 3 placeholders: no second signal, no combining, no label yet.
+    guess = None
+    confidence = 0.0
+    label = "PLACEHOLDER — labels arrive in Milestone 5."
+
+    entry = audit.log_decision(
+        content_id=content_id,
+        creator_id=creator_id,
+        guess=guess,
+        model_score=model_score,
+        label=label,
+        status="decided",
+    )
+
     return jsonify({
-        "error": "not_implemented",
-        "message": "POST /submit isn't built yet — see the TODO in app.py.",
-        "you_sent": {
-            "text_length": len(payload.get("text", "")),
-            "creator_id": payload.get("creator_id"),
-        },
-    }), 501
+        "content_id": content_id,
+        "creator_id": creator_id,
+        "guess": guess,
+        "label": label,
+        "confidence": confidence,
+        "combined_score": None,
+        "model_score": model_score,
+        "style_score": None,
+        "status": entry["status"],
+        "timestamp": entry["timestamp"],
+    })
+
+
+# Input limits — the contract in TRACE.md.
+MAX_TEXT_CHARS = 20_000
+MAX_CREATOR_ID_CHARS = 100
+
+
+def _refuse(status: int, error: str, message: str, creator_id: str = "unknown", **extra):
+    """
+    Answer a request we won't score, and leave a trace of it.
+
+    No label, no guess — a text that couldn't be scored isn't called human or AI.
+    """
+    audit.log_rejection(creator_id=creator_id, reason=error, http_status=status, **extra)
+    return jsonify({"error": error, "message": message}), status
 
 
 @app.post("/appeal")
