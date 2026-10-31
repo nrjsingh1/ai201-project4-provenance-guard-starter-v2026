@@ -200,6 +200,8 @@ def submit():
     a malformed input is one of the most common real failures there is.
     """
     import detector
+    import scoring
+    import stylometry
 
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
@@ -232,18 +234,21 @@ def submit():
         return _refuse(503, "detector_unavailable",
                        "The checker isn't available right now. Try again shortly.", creator_id)
 
+    style_score = stylometry.style_signal(text)
+    combined_score = scoring.combine_signals(model_score, style_score)
     content_id = str(uuid.uuid4())
 
-    # Milestone 3 placeholders: no second signal, no combining, no label yet.
-    guess = None
-    confidence = 0.0
-    label = "PLACEHOLDER — labels arrive in Milestone 5."
+    # The guess is real now; the label text is a placeholder until Milestone 5.
+    guess, label = scoring.score_to_label(combined_score)
+    confidence = round(abs(combined_score - 0.5) * 2, 4)
 
     entry = audit.log_decision(
         content_id=content_id,
         creator_id=creator_id,
         guess=guess,
         model_score=model_score,
+        style_score=style_score,
+        combined_score=combined_score,
         label=label,
         status="decided",
     )
@@ -254,9 +259,9 @@ def submit():
         "guess": guess,
         "label": label,
         "confidence": confidence,
-        "combined_score": None,
+        "combined_score": combined_score,
         "model_score": model_score,
-        "style_score": None,
+        "style_score": style_score,
         "status": entry["status"],
         "timestamp": entry["timestamp"],
     })

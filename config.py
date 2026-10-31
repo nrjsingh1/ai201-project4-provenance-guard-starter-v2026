@@ -57,6 +57,15 @@ DETECTOR_MAX_TOKENS = 400
 WEIGHT_MODEL_SIGNAL = 0.5
 WEIGHT_STYLE_SIGNAL = 0.5
 
+# The disagreement rule. An AI label needs BOTH signals to lean AI: if either
+# reads below BOTH_SIGNALS_FLOOR, the combined score is capped at
+# DISAGREEMENT_CAP. Keep the cap below AI_THRESHOLD, or the rule does nothing.
+# Plain human writing fools both signals, so one signal alone is never enough
+# to accuse anyone. The cap only works downward: disagreement can still reach
+# the human label, because a miss costs less than an accusation.
+BOTH_SIGNALS_FLOOR = 0.60
+DISAGREEMENT_CAP = 0.70
+
 
 # ─── Thresholds (Milestone 5) ────────────────────────────────────────────────
 # Where one label becomes another. Scores run 0.0 (confidently human) to 1.0
@@ -72,7 +81,7 @@ WEIGHT_STYLE_SIGNAL = 0.5
 # that decide who pays for it.
 
 HUMAN_THRESHOLD = 0.35
-AI_THRESHOLD = 0.65
+AI_THRESHOLD = 0.75     # raised from 0.65 in Milestone 4 — see TRACE.md section 3
 
 # ⚠️ One thing that catches people out in Milestone 5. A weighted average can
 # only land between its two inputs — so while `style_signal` is still the stub

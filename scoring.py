@@ -49,14 +49,19 @@ def combine_signals(model_score: float, style_score: float) -> float:
       - Milestone 4 asks you to find a case where your two signals split and
         write it down. That case is what this rule exists to handle.
 
-    The weights in config.py are placeholders. Change them, or ignore them and
-    write a different rule.
+    My rule: a weighted average (0.5 / 0.5 in config.py), then a cap. If either
+    signal is below BOTH_SIGNALS_FLOOR, the score can't go above
+    DISAGREEMENT_CAP, which sits under AI_THRESHOLD — so one signal on its own
+    can never produce an AI label. The cap doesn't touch the low end: two
+    signals that split can still land on "human".
     """
-    # TODO: replace this
-    return (
+    combined = (
         config.WEIGHT_MODEL_SIGNAL * model_score
         + config.WEIGHT_STYLE_SIGNAL * style_score
     )
+    if min(model_score, style_score) < config.BOTH_SIGNALS_FLOOR:
+        combined = min(combined, config.DISAGREEMENT_CAP)
+    return round(min(max(combined, 0.0), 1.0), 4)
 
 
 def score_to_label(score: float) -> tuple[str, str]:

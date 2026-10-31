@@ -74,37 +74,92 @@ and the field-by-field endpoint contracts — is in [TRACE.md](TRACE.md).
 
 ### Signal one — the model signal
 
-**What it measures:**
+**What it measures:** how predictable the text is to gpt2, running locally —
+its perplexity on the first 400 tokens, squashed onto 0–1 (perplexity 45 →
+0.5). Higher = more AI-like. `detector.py::model_signal`, unchanged from the
+starter.
 
-**Why that might differ between human and AI writing:**
+**Why that might differ between human and AI writing:** a model writes by
+picking likely next words, so model text is easy for a model to predict.
+People make odder, more specific choices.
 
-**What it can't see:**
+**What it can't see:** authorship. Predictable isn't machine-written. Plain
+human writing — short sentences, safe vocabulary — scored **0.81** in
+calibration, nearly as AI-like as unedited AI text (0.90). It also only reads
+the first ~300 words, so AI text pasted after a human opening goes unseen, and
+it reads well-known passages as predictable because gpt2 has seen them.
 
 ### Signal two — the style signal
 
-**What it measures:**
+**What it measures:** the shape of the text, without reading it
+(`stylometry.py::style_signal`). Three measures, each mapped onto 0–1
+AI-likeness between two calibrated anchors, then weighted:
 
-**Why that might differ between human and AI writing:**
+| Measure | Raw value | AI end → human end | Weight |
+|---|---|---|---|
+| Sentence-length spread | stdev / mean of words per sentence | 0.20 → 0.65 | 0.45 |
+| Vocabulary variety | type-token ratio over 50-word windows (MATTR) | **0.90 → 0.72** | 0.35 |
+| Punctuation variety | `; : ( ) ? !` and dashes per 100 words | 0 → 4 | 0.20 |
 
-**What it can't see:**
+Under 3 sentences, spread counts as 0.5 ("no evidence") rather than as
+perfectly even.
+
+**Why that might differ between human and AI writing:** generated prose comes
+out even — mid-length sentences, tidy punctuation. People are lumpier: a
+three-word sentence beside a forty-word one, a dash, a question.
+
+Vocabulary variety runs the **opposite** way to what I expected. In
+calibration the AI text had the most varied vocabulary (0.92) and Twain the
+least (0.71): models are tuned to avoid repeating words, people repeat
+themselves. So high variety counts as AI-like here. That rests on five
+samples and is the first thing I'd recheck with more text.
+
+**What it can't see:** meaning. Anything that changes the shape without
+changing the substance moves it. Adding one three-word fragment ("Privacy.
+Bias. Jobs.") to AI text gave it the most human-looking spread of all five
+inputs (0.85). Plain, regular human writing looks even, so it leans AI-like
+here too, and below ~100 words the measures are mostly noise.
 
 ### The combining rule
 
-<!-- Write the rule in words, then give the numbers. What happens when the two
-     signals disagree? -->
+**The rule:** average the two signals equally. Then, if **either** signal is
+below 0.60, cap the result at 0.70 — just under the AI threshold. One signal
+alone can never get text labelled AI; both have to lean that way. The cap only
+works downward, so two signals that split can still reach "human": a missed
+detection costs less than a wrong accusation.
 
-**The rule:**
-
-**The numbers:**
+**The numbers:** `WEIGHT_MODEL_SIGNAL = 0.5`, `WEIGHT_STYLE_SIGNAL = 0.5`,
+`BOTH_SIGNALS_FLOOR = 0.60`, `DISAGREEMENT_CAP = 0.70`, `AI_THRESHOLD = 0.75`
+(raised from 0.65), `HUMAN_THRESHOLD = 0.35`. All in `config.py`.
 
 **Where it lives:** `scoring.py::combine_signals`
 
-<!-- ⚠️ The grader checks your code against that line. If your rule lives
-     somewhere else, say where. -->
-
 **A case where my two signals split, and what my rule does with it:**
 
+Twain's opening to *Huckleberry Finn*: the model signal says **0.45**
+(coin-flip — gpt2 has probably seen this famous text), the style signal says
+**0.06** (lumpy sentences, repeated words, dashes and semicolons). The average
+is 0.26, under the human threshold, so it's labelled human. The cap doesn't
+apply, because it only stops splits from reaching *AI*.
 
+The split that matters more is the plain human piece: model **0.81**, style
+**0.60**. Style sits exactly on the floor, so the cap doesn't fire, and the
+average of 0.71 only stays "unsure" because the AI threshold is 0.75. That's
+the writer from my Milestone 1 trace, and they're one style point from the cap
+and four combined points from an accusation.
+
+**Calibration** (`python calibrate.py` reproduces it):
+
+| Input | Source | model | style | combined | guess |
+|---|---|---|---|---|---|
+| clearly AI | AI-generated, unedited | 0.900 | 0.972 | 0.936 | ai |
+| clearly human | Twain, *Huckleberry Finn* (1884) | 0.454 | 0.061 | 0.258 | human |
+| formal human | Darwin, *Origin of Species* (1859) | 0.667 | 0.492 | 0.580 | unsure |
+| lightly-edited AI | the AI text, hand-edited | 0.654 | 0.478 | 0.566 | unsure |
+| plain human | stand-in imitating plain writing | 0.814 | 0.600 | 0.707 | unsure |
+
+Clearly-AI and clearly-human sit **0.68 apart**. The human samples are
+public-domain prose, not my own writing — criterion 1 still needs my own.
 
 ---
 
