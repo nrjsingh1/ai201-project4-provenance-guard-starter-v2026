@@ -286,17 +286,39 @@ $ curl -s "http://127.0.0.1:5000/log" | jq -c '.entries[] | select(.content_id =
 
 ## How I Used AI
 
-**Moment 1**
+I built this with Claude Code working in the repository: it wrote most of the
+code and drafts, ran the tests and `curl` checks, and committed each milestone.
+These are the two moments where the decision was mine, or where what came back
+changed the design.
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+**Moment 1 — the acceptance criteria (Milestone 2)**
 
-**Moment 2**
+- *What I asked for:* to write my five criteria for me.
+- *What came back:* it declined to choose the targets, because the milestone
+  says a criterion you didn't write is one you can't defend. Instead it asked
+  me to pick each number from options, then wrote the message a real writer
+  would send me if they were one of the people my false-positive rate allows —
+  a second-language student asking whether they're supposed to "write worse".
+- *What I changed:* I chose every target: at most 2 of 10 of my own pieces
+  labelled AI, a 0.30 gap between clearly-AI and clearly-human averages, at
+  least 2 inputs per label, all 8 bad inputs refused with a 4xx, and 5 of 5
+  appeals recorded. After reading the writer's message I kept 2 of 10. The
+  reason paragraphs under each criterion were drafted by Claude from my
+  choices.
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+**Moment 2 — the style signal running backwards (Milestone 4)**
+
+- *What I asked for:* to build the style signal from the three measures the
+  brief names and run both signals over five calibration inputs.
+- *What came back:* the table showed vocabulary variety pointing the opposite
+  way from the brief's assumption: the AI text had the *most* varied vocabulary
+  (0.92) and Twain the least (0.71). With it the textbook way round, the plain
+  human piece was labelled AI by both signals (combined 0.82).
+- *What I changed:* the measure was flipped so high variety counts as AI-like,
+  which moved the plain piece to "unsure" (0.71) — and I wrote down that this
+  rests on five samples, none of them my own writing, and that the plain piece
+  still sits exactly on the 0.60 disagreement floor. Those two caveats are
+  the first things I'd test in unit 8.
 
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 
