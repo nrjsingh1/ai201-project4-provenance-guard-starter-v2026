@@ -270,6 +270,7 @@ def submit():
 # Input limits — the contract in TRACE.md.
 MAX_TEXT_CHARS = 20_000
 MAX_CREATOR_ID_CHARS = 100
+MAX_REASONING_CHARS = 5_000
 
 
 def _refuse(status: int, error: str, message: str, creator_id: str = "unknown", **extra):
@@ -302,14 +303,50 @@ def appeal():
     to the person on the other end. It's the only thing standing between a
     wrong accusation and nothing at all.
     """
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return _refuse(400, "invalid_json", "Send a JSON object with 'content_id' and 'reasoning'.")
 
-    # TODO: delete this and build the route.
+    content_id = payload.get("content_id")
+    if not isinstance(content_id, str) or not content_id.strip():
+        return _refuse(400, "missing_content_id", "Include the 'content_id' from your result.")
+    content_id = content_id.strip()
+
+    reasoning = payload.get("reasoning")
+    if not isinstance(reasoning, str) or not reasoning.strip():
+        return _refuse(400, "missing_reasoning",
+                       "Tell us in 'reasoning' why you think the result is wrong.",
+                       content_id=content_id)
+    reasoning = reasoning.strip()
+    if len(reasoning) > MAX_REASONING_CHARS:
+        return _refuse(413, "reasoning_too_long",
+                       f"Reasoning can be at most {MAX_REASONING_CHARS:,} characters.",
+                       content_id=content_id)
+
+    history = audit.entries_for(content_id)
+    decision = next((e for e in history if e.get("status") == "decided"), None)
+    if decision is None:
+        return _refuse(404, "unknown_content_id",
+                       "We couldn't find a result with that content_id. Check it was copied exactly.",
+                       content_id=content_id)
+    if any(e.get("status") == "under_review" for e in history):
+        return _refuse(409, "already_under_review",
+                       "This piece already has an appeal waiting for review.",
+                       decision["creator_id"], content_id=content_id)
+
+    # creator_id comes from the original decision, not the request (TRACE.md).
+    entry = audit.log_appeal(content_id, decision["creator_id"], reasoning)
+
     return jsonify({
-        "error": "not_implemented",
-        "message": "POST /appeal isn't built yet — see the TODO in app.py.",
-        "you_sent": payload,
-    }), 501
+        "content_id": content_id,
+        "status": entry["status"],
+        "original_guess": decision.get("guess"),
+        "original_label": decision.get("label"),
+        "message": "Thanks. Your appeal is recorded and this piece is now waiting "
+                   "for a person to review it. The original result isn't final "
+                   "while that happens.",
+        "timestamp": entry["timestamp"],
+    })
 
 
 # ── Already works ─────────────────────────────────────────────────────────────
