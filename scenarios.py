@@ -22,49 +22,62 @@ A scenario carries **either** of these:
               because you cannot express "the field is missing" as a string.
 """
 
+from pathlib import Path
+
+import eval_texts
+
+# Criterion 1 is MY writing, one piece per .txt file in my_writing/. Nothing
+# else counts, so until those files exist the scenario is left out rather than
+# filled with someone else's prose.
+MY_WRITING = sorted(Path(__file__).parent.glob("my_writing/*.txt"))
+
 SCENARIOS = [
-    {
+    *([{
         "name": "my own writing",
         "criterion": 1,
-        # ⚠️ PUT YOUR OWN WRITING HERE. Not AI text, not a sample from the web —
-        # things you actually wrote. This is the criterion that matters most and
-        # it's meaningless with someone else's prose.
-        "texts": [
-            "REPLACE ME with a paragraph you wrote yourself.",
-            "REPLACE ME with another one. Ten pieces is the usual number.",
-        ],
+        "texts": [p.read_text(encoding="utf-8").strip() for p in MY_WRITING],
+    }] if MY_WRITING else []),
+    {
+        "name": "clearly AI",
+        "criterion": 2,
+        "texts": eval_texts.CLEARLY_AI,
+    },
+    {
+        "name": "clearly human",
+        "criterion": 2,
+        "texts": eval_texts.CLEARLY_HUMAN,
     },
     {
         "name": "label coverage",
-        "criterion": 2,
-        # Inputs spread across your score range, so you can check all three
-        # labels are actually reachable.
+        "criterion": 3,
+        # Two inputs aimed at each label, picked from texts whose scores I'd
+        # already seen: human, human, unsure, unsure, AI, AI.
         "texts": [
-            "REPLACE ME with something you're confident is AI-generated.",
-            "REPLACE ME with something you're confident is human-written.",
-            "REPLACE ME with something genuinely borderline.",
+            eval_texts.CLEARLY_HUMAN[0],     # Twain
+            eval_texts.CLEARLY_HUMAN[1],     # Melville
+            eval_texts.CLEARLY_HUMAN[4],     # Darwin
+            eval_texts.LIGHTLY_EDITED_AI,
+            eval_texts.CLEARLY_AI[0],
+            eval_texts.CLEARLY_AI[1],
         ],
     },
-    # A bad-input criterion looks like this. Uncomment and adjust if that's one
-    # of your five — these are raw request bodies, sent exactly as written.
-    #
-    # {
-    #     "name": "bad input",
-    #     "criterion": 3,
-    #     "bodies": [
-    #         {"text": "", "creator_id": "eval_bad_empty"},
-    #         {"creator_id": "eval_bad_missing"},          # no text field at all
-    #         {"text": "word " * 50000, "creator_id": "eval_bad_huge"},
-    #         {"text": None, "creator_id": "eval_bad_null"},
-    #     ],
-    # },
-
-    # TODO: add what your remaining criteria need.
-    #
-    # A criterion about the appeal path can't be tested by sending text alone;
-    # it needs a submission first and then an appeal against the content_id
-    # that came back. You'll need to test that one by hand, or extend this file
-    # and run_eval.py to do it. Saying which you did is part of the write-up.
+    {
+        "name": "bad input",
+        "criterion": 4,
+        # Seven of criterion 4's eight. The eighth — a body that is a JSON list
+        # — can't be a dict, so run_checks.py sends it.
+        "bodies": [
+            {"creator_id": "eval_bad_missing"},
+            {"text": "", "creator_id": "eval_bad_empty"},
+            {"text": "   \n\t  ", "creator_id": "eval_bad_whitespace"},
+            {"text": None, "creator_id": "eval_bad_null"},
+            {"text": 42, "creator_id": "eval_bad_number"},
+            {"text": "word " * 5000, "creator_id": "eval_bad_huge"},
+            {"text": eval_texts.CLEARLY_AI[2]},           # no creator_id
+        ],
+    },
+    # Criterion 5 (appeals) needs a submission and then an appeal against the
+    # content_id that came back, which run_eval.py can't do. run_checks.py does.
 ]
 
 

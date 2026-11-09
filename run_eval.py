@@ -123,6 +123,7 @@ def main():
                         "status": response.status_code,
                         "guess": payload.get("guess"),
                         "confidence": payload.get("confidence"),
+                        "combined_score": payload.get("combined_score"),
                         "model_score": payload.get("model_score"),
                         "style_score": payload.get("style_score"),
                         "label": payload.get("label"),

@@ -537,20 +537,369 @@ often wrong "about simple or plain writing" — which to this writer reads as
 
 <!-- Your five criteria across three trials. `run_eval.py --label before`. -->
 
+Criteria 2–4 ran through `run_eval.py --label before`
+(`results/run_2026-11-09_0046_before.md`). Criterion 5 and criterion 4's
+eighth request ran through `run_checks.py --label before`
+(`results/checks_2026-11-09_0046_before.json`), because `run_eval.py` only
+calls `/submit` and only sends dict bodies. Nothing changed between trials.
+
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |
+| 1. My own writing is rarely called AI | ≤ 2 of 10 labelled AI | not run | not run | not run | **NOT RUN** — needs my ten pieces in `my_writing/` |
+| 2. Clearly-AI and clearly-human land far apart | AI mean ≥ human mean + 0.30 | 0.880 − 0.398 = 0.482 | 0.482 | 0.482 | MET |
+| 3. Every label is reachable | ≥ 2 inputs per label | 2 / 2 / 2 | 2 / 2 / 2 | 2 / 2 / 2 | MET |
+| 4. Bad input is refused, never labelled | 8 of 8 refused | 8/8 | 8/8 | 8/8 | MET |
+| 5. Every appeal is recorded and changes status | 5 of 5 + 2 of 2 | 7/7 | 7/7 | 7/7 | MET |
 
-**Real output from one trial**, pasted as text, naming the file and function
-that produced it:
+All three trials came out identical, which is what two deterministic signals
+should do. Two notes on how they passed:
+
+- **Criterion 4, trial 3:** the JSON-list body got `429`, not `400`. It was the
+  sixth request without a usable `creator_id` inside a minute, so it counted
+  against my address and never reached the route. It still meets the criterion
+  as written (a 4xx, an `error` field, no label), but it was refused by the
+  limiter, not by my validation.
+- **Criterion 2** passed with three of the five clearly-human samples landing
+  on "unsure" (Dickens 0.43, Austen 0.50, Darwin 0.58). The averages are far
+  apart; the individual human texts are not all safely human.
+
+These five met, and 20 of 56 attacks broke. The attack set went where my
+criteria didn't: careful non-native writing, junk text, injected instructions.
+
+**Real output from one trial** — trial 1 of each. Label text trimmed to 40
+characters; the full JSON is in the results files named above.
+
+*Criterion 2 — `run_eval.py::main`, scenario "clearly AI", trial 1*
 
 ```json
-
+[
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.8726,
+    "combined_score": 0.9363,
+    "model_score": 0.9005,
+    "style_score": 0.972,
+    "label": "This writing has a lot in common with te…",
+    "sent": "Artificial intelligence is transforming …"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.7718,
+    "combined_score": 0.8859,
+    "model_score": 0.941,
+    "style_score": 0.8308,
+    "label": "This writing has a lot in common with te…",
+    "sent": "Climate change represents one of the mos…"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.808,
+    "combined_score": 0.904,
+    "model_score": 0.8079,
+    "style_score": 1.0,
+    "label": "This writing has a lot in common with te…",
+    "sent": "Effective time management is an essentia…"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.6604,
+    "combined_score": 0.8302,
+    "model_score": 0.8268,
+    "style_score": 0.8336,
+    "label": "This writing has a lot in common with te…",
+    "sent": "Reading offers a wide range of benefits …"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.6898,
+    "combined_score": 0.8449,
+    "model_score": 0.851,
+    "style_score": 0.8388,
+    "label": "This writing has a lot in common with te…",
+    "sent": "Remote work has become increasingly popu…"
+  }
+]
 ```
+
+*Criterion 2 — `run_eval.py::main`, scenario "clearly human", trial 1*
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.485,
+    "combined_score": 0.2575,
+    "model_score": 0.4538,
+    "style_score": 0.0611,
+    "label": "This reads like it was written by a pers…",
+    "sent": "You don't know about me without you have…"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.5564,
+    "combined_score": 0.2218,
+    "model_score": 0.3792,
+    "style_score": 0.0645,
+    "label": "This reads like it was written by a pers…",
+    "sent": "Call me Ishmael. Some years ago - never …"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.1438,
+    "combined_score": 0.4281,
+    "model_score": 0.6238,
+    "style_score": 0.2324,
+    "label": "Our automated check couldn't tell whethe…",
+    "sent": "Marley was dead: to begin with. There is…"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.0044,
+    "combined_score": 0.5022,
+    "model_score": 0.7251,
+    "style_score": 0.2793,
+    "label": "Our automated check couldn't tell whethe…",
+    "sent": "It is a truth universally acknowledged, …"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.1596,
+    "combined_score": 0.5798,
+    "model_score": 0.6673,
+    "style_score": 0.4924,
+    "label": "Our automated check couldn't tell whethe…",
+    "sent": "When on board H.M.S. Beagle, as naturali…"
+  }
+]
+```
+
+*Criterion 3 — `run_eval.py::main`, scenario "label coverage", trial 1*
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.485,
+    "combined_score": 0.2575,
+    "model_score": 0.4538,
+    "style_score": 0.0611,
+    "label": "This reads like it was written by a pers…",
+    "sent": "You don't know about me without you have…"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.5564,
+    "combined_score": 0.2218,
+    "model_score": 0.3792,
+    "style_score": 0.0645,
+    "label": "This reads like it was written by a pers…",
+    "sent": "Call me Ishmael. Some years ago - never …"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.1596,
+    "combined_score": 0.5798,
+    "model_score": 0.6673,
+    "style_score": 0.4924,
+    "label": "Our automated check couldn't tell whethe…",
+    "sent": "When on board H.M.S. Beagle, as naturali…"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.1326,
+    "combined_score": 0.5663,
+    "model_score": 0.6544,
+    "style_score": 0.4782,
+    "label": "Our automated check couldn't tell whethe…",
+    "sent": "AI is changing the way we live and work.…"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.8726,
+    "combined_score": 0.9363,
+    "model_score": 0.9005,
+    "style_score": 0.972,
+    "label": "This writing has a lot in common with te…",
+    "sent": "Artificial intelligence is transforming …"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.7718,
+    "combined_score": 0.8859,
+    "model_score": 0.941,
+    "style_score": 0.8308,
+    "label": "This writing has a lot in common with te…",
+    "sent": "Climate change represents one of the mos…"
+  }
+]
+```
+
+*Criterion 4 — `run_eval.py::main`, scenario "bad input", trial 1*
+
+```json
+[
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "combined_score": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"creator_id\": \"eval_bad_missing\"}"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "combined_score": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "(empty text)"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "combined_score": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "   \n\t  "
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "combined_score": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"text\": null, \"creator_id\": \"eval_bad_n…"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "combined_score": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"text\": 42, \"creator_id\": \"eval_bad_num…"
+  },
+  {
+    "status": 413,
+    "guess": null,
+    "confidence": null,
+    "combined_score": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "word word word word word word word word …"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "combined_score": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"text\": \"Effective time management is a…"
+  }
+]
+```
+
+*Criterion 4, eighth request — `run_checks.py::list_body_trial`, trial 1*
+
+```json
+{
+  "status": 400,
+  "response": {
+    "error": "invalid_json",
+    "message": "Send a JSON object with 'text' and 'creator_id'."
+  },
+  "passed": true
+}
+```
+
+*Criterion 5 — `run_checks.py::appeal_trial`, trial 1: one real appeal and one
+made-up id (the other five are in the results file)*
+
+```json
+{
+  "content_id": "4ae10887-e404-49ff-b17e-59fa83f411d5",
+  "appeal_status": 200,
+  "appeal_response": {
+    "content_id": "4ae10887-e404-49ff-b17e-59fa83f411d5",
+    "message": "Thanks. Your appeal is recorded and this piece is now waiting for a person to review it. The original result isn't final while that happens.",
+    "original_guess": "ai",
+    "original_label": "This writing has a lot in common with te…",
+    "status": "under_review",
+    "timestamp": "2026-11-09T05:46:18+00:00"
+  },
+  "log_after": [
+    {
+      "combined_score": 0.9363,
+      "content_id": "4ae10887-e404-49ff-b17e-59fa83f411d5",
+      "creator_id": "eval_appeal_t1_1",
+      "guess": "ai",
+      "label": "This writing has a lot in common with te…",
+      "model_score": 0.9005,
+      "status": "decided",
+      "style_score": 0.972,
+      "timestamp": "2026-11-09T05:46:18+00:00"
+    },
+    {
+      "combined_score": null,
+      "content_id": "4ae10887-e404-49ff-b17e-59fa83f411d5",
+      "creator_id": "eval_appeal_t1_1",
+      "event": "appeal",
+      "guess": null,
+      "label": null,
+      "model_score": null,
+      "reasoning": "Criterion 5 check, trial 1.",
+      "status": "under_review",
+      "style_score": null,
+      "timestamp": "2026-11-09T05:46:18+00:00"
+    }
+  ],
+  "passed": true
+}
+```
+
+```json
+{
+  "content_id": "af6054ce-7287-4582-a82b-eae48af8ff23",
+  "appeal_status": 404,
+  "appeal_response": {
+    "error": "unknown_content_id",
+    "message": "We couldn't find a result with that content_id. Check it was copied exactly."
+  },
+  "under_review_entries": 0,
+  "passed": true
+}
+```
+
+*Criterion 1* — no output yet. `scenarios.py` loads every `my_writing/*.txt`
+as criterion 1's input and leaves the scenario out until those files exist.
 
 **Diagnoses**
 
