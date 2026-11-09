@@ -321,6 +321,31 @@ changed the design.
   still sits exactly on the 0.60 disagreement floor. Those two caveats are
   the first things I'd test in unit 8.
 
+**Moment 3 — marking the attack run (unit 8, Milestone 2)**
+
+- *What I asked for:* to run the attack set and mark each attack held or
+  broke.
+- *What came back:* Claude ran all 56 and tabulated both signal scores for
+  each, but left the held-or-broke calls to me, and asked one question per
+  family: does "unsure" count as broke?
+- *What I changed:* I set the rules — for AI text anything but the AI label is
+  broke; for human writing only the AI label is. That gave 20 broke, 36 held.
+  I picked FP03 as my worst outcome; the paragraph explaining it was drafted
+  by Claude.
+
+**Moment 4 — choosing the one fix (unit 8, Milestone 5)**
+
+- *What I asked for:* help picking an improvement.
+- *What came back:* Claude simulated three options on my logged scores before
+  touching any code: a 40-word input minimum (20 → 13 broken, but FP03 stays
+  accused), raising the AI threshold to 0.80 (20 → 18, both false accusations
+  fixed), lowering it to 0.70 (worse, a new false accusation). It also wrote
+  the diagnoses from the evidence, including a test showing PI02's injected
+  line alone moved signal one from 0.75 to 0.20.
+- *What I changed:* I chose the threshold, the smaller count change, because
+  it fixed the writer I said I'd least want to explain things to. The rerun
+  matched the simulation exactly.
+
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 
 ---
@@ -1095,14 +1120,65 @@ detection costs the site a little, a wrong accusation cost FP03 a lot.
 <!-- For each attack still getting through and each criterion still missed:
      what you'd do, and why you stopped. -->
 
+18 of 56 attacks still get through after the improvement, in the same patterns
+the diagnoses named. Each group, what I'd do, and why I stopped.
 
+**AI text landing on "unsure" — EV02, EV03, EV05, EV06, EV07, EV09, EV10,
+PI01, PI03, PI05 (pattern 1).** *What I'd do:* add a third signal that doesn't
+share the other two's weaknesses — a modern detector model rather than gpt2 —
+and stop letting any single signal's drop decide the outcome. Reweighting or
+lowering the threshold won't do it: at 0.70 the simulation added FP02 as a new
+false accusation. *Why I stopped:* the milestone allows one change, and the
+only threshold move that catches more of these accuses more writers. My
+improvement made this group slightly easier to join (the AI line is now 0.80).
+
+**Signal one fooled by odd tokens — EV01, PI02, EV08 (pattern 2).** *What I'd
+do:* clean the text before signal one reads it — drop lines that look like
+instructions or `key=value` syntax, and don't score text too short to give
+gpt2 context. On PI02, removing the injected line alone moved the model score
+from 0.20 to 0.75. *Why I stopped:* one change; and a cleaning rule good enough
+to ship needs its own attack set, because attackers would aim at the cleaner.
+
+**Junk input still labelled — MF03–MF07 (pattern 4).** *What I'd do:* refuse
+anything under 40 words before the signals run, with a plain message saying
+why. Simulated on the "before" scores it takes breaks from 20 to 13 on its own.
+It has two costs I'd have to design around: a short genuine piece (FP08, 8
+words) would be refused instead of labelled, and my word counter only counts
+Latin letters, so text in other scripts — MF07, right-to-left — would be
+refused too. The message would have to say "English prose, at least 40 words",
+honestly, rather than pretend those writers sent junk. *Why I stopped:* I spent
+my one change on the false accusations instead.
+
+**RQ10 and RQ11 — not really tested.** Both met the rate limiter before my
+route, in both runs. *What I'd do:* rerun them alone after the window resets.
+*Why I stopped:* nothing got through either way, and the route already returns
+`400` for the same kind of body when it reaches it.
+
+**The rate limit can be dodged.** Not an attack in the set, but the limit
+counts per `creator_id`, so a script that sends a new one each time is never
+limited. *What I'd do:* add a per-IP ceiling alongside the per-creator one.
+*Why I stopped:* out of scope for one change, and a per-IP limit punishes
+shared networks — a school or a household — which needs its own numbers.
+
+**Criterion 1 — no verdict.** *What I'd do:* collect ten pieces of my own
+writing into `my_writing/` and run it; `scenarios.py` already loads them.
+*Why I stopped:* I haven't collected those pieces yet, so the criterion that
+matters most to a real writer is the one I can't call.
+
+**Criterion 3 — met, but too easy.** I chose its inputs after seeing their
+scores. *What I'd do:* fix the inputs before scoring and require a share of a
+natural set to land in each band.
 
 **The trade I'd make if this ran for real:**
 
 <!-- Two sentences. Fewer wrong accusations means more AI text getting through.
      Say which way you'd go and WHO PAYS FOR IT. -->
 
-
+I'd keep erring toward fewer wrong accusations — the 0.80 threshold and a wide
+"unsure" band — because a false "AI" label lands on one person who can do
+little about it, often a plain or non-native writer like FP03. The cost is paid
+by the site and its readers, who will see more AI text pass as "unsure", and by
+honest writers whose work now competes with AI-written pieces that got through.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 
