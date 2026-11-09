@@ -566,6 +566,31 @@ should do. Two notes on how they passed:
 These five met, and 20 of 56 attacks broke. The attack set went where my
 criteria didn't: careful non-native writing, junk text, injected instructions.
 
+**How each verdict was decided** — every target had to hold in all three
+trials. I then had a reader with no context argue the opposite verdict for
+each, and went and got the evidence it named.
+
+1. **No verdict.** There is no data: the criterion is about my own writing and
+   `my_writing/` is still empty. It is not MET, and I can't call it MISSED.
+2. **MET.** The gap was 0.482 against a 0.30 target in every trial. The case
+   against: the mean could hide overlap. Checked: there is none — the lowest
+   AI sample is 0.83, the highest human 0.58. Five famous texts a side is a
+   small sample, and three of the human ones still land on "unsure".
+3. **MET, but the test was weak.** Two inputs per label in every trial — but I
+   chose those inputs after seeing their scores, so it couldn't fail. It shows
+   each label *can* be reached, not that ordinary text reaches it. **This is
+   the criterion I'd tighten:** inputs fixed before scoring, and a share of a
+   natural set landing in each band.
+4. **MET.** 8 of 8 refused in every trial. The case against: in trial 3 the
+   JSON-list body was refused by the rate limiter, so validation never saw it.
+   Checked: sent on its own it gets `400 invalid_json`, as in trials 1 and 2.
+5. **MET.** 7 of 7 in every trial. The case against: 12+ requests against a
+   5-per-minute limit is unexplained. It isn't — the limiter covers only
+   `/submit` (`app.py:154`), each submission used its own `creator_id`, and
+   `run_checks.py:54` compares the whole original entry before and after.
+
+No criterion was revised: none turned out unmeasurable.
+
 **Real output from one trial** — trial 1 of each. Label text trimmed to 40
 characters; the full JSON is in the results files named above.
 
@@ -917,7 +942,65 @@ as criterion 1's input and leaves the scenario out until those files exist.
 
      Look for a pattern. Five failures on one signal is one problem, not five. -->
 
+There are no criterion misses to diagnose (criterion 1 has no data). The 20
+broken attacks fall into four patterns. Scores are from
+`results/audit_extract_before.jsonl`; "avg" is the plain average of the two
+signals before the cap.
 
+**1. One signal moving is enough to escape the AI label — 10 breaks.**
+EV02, EV03, EV05, EV06, EV07, EV09, EV10, PI01, PI03, PI05.
+*Stage: the combining rule and the label mapping.* The combined score is an
+equal-weight average and the AI label needs 0.75, so AI text is only caught
+when *both* signals stay high; my clearly-AI samples scored 0.83–0.94 because
+both did. An attacker only has to pull one signal down to about 0.45. In EV02,
+EV06, EV07 and EV10 that signal was signal two — broken-up sentences,
+one long sentence beside a short one, punctuation padding and stanza
+repetition dropped style to 0.37–0.47, exactly the shape blind spot Milestone 1
+named. In EV03 and EV09 (a pasted quotation, a human opening) both signals
+sagged to about 0.7; EV05's heavy human edit pulled both under 0.45.
+The disagreement cap did nothing here: it fired twice (EV10, MF06) and changed
+no label, because both averages were already under 0.75. With a 0.75
+threshold, an average with one signal below 0.60 can only reach the AI label
+if the other is above 0.90 — so the cap is almost entirely redundant. This is
+the trade I chose, fewer accusations for more AI text getting through; the
+attack set shows how cheap it is to take the other side of it.
+
+**2. Signal one reads unusual tokens as human — 3 breaks.**
+EV01 (typos, model 0.16), PI02 (a fake `SYSTEM:` line, model 0.20), EV08
+(10 words, model 0.25).
+*Stage: signal one. Mechanism: perplexity rises on anything gpt2 finds
+surprising — misspellings, `key=value` syntax, too little context — whatever
+wrote the text.* I tested this on PI02: with its injected first line removed,
+the same AI paragraph scores model **0.75**, not 0.20. The instruction didn't
+work because anything obeyed it — nothing in my service reads instructions —
+it worked because its tokens confused signal one, and that moved the label
+from "unsure" to "human". EV01 aimed at signal two and signal two held: since I
+flipped vocabulary variety, typos make it read *more* AI (style 1.00). Signal
+one broke instead.
+
+**3. Both signals share one blind spot — 2 breaks, the false positives.**
+FP03 (a careful non-native writer) and FP04 (an essay written to a rubric).
+*Stages: signals one and two, and the combining rule.* Plain, regular writing
+is predictable to gpt2 (model 0.81, 0.83) and evenly shaped (style 0.72,
+0.68). My average treats two signals agreeing as two pieces of evidence, but
+here they agree for one reason. Both were above the 0.60 floor, so the cap
+couldn't fire, and 0.76 beat the threshold by 0.01. This is the writer my
+Milestone 1 trace predicted.
+
+**4. The route accepts text that isn't language — 5 breaks.**
+MF03–MF07: control characters, punctuation only, one very long "word", emoji
+only, right-to-left script.
+*Stage: the route. Mechanism: validation checks type, length and a 3-token
+minimum, but never whether the input is prose.* Both signals then produce
+meaningless numbers: signal one gives 0.00 or 1.00, and signal two gives
+one-"sentence" input a neutral 0.5 spread while vocabulary and punctuation,
+with nothing to count, read as fully AI-like. So a single long string is
+labelled AI (0.89) and punctuation is labelled human (0.33).
+
+**The pattern across all four:** a single fragile signal decides too much.
+Signal one is the easiest to move — it broke three attacks on its own, it
+carries most of the false-positive score, and the averaging rule lets any one
+signal's drop be enough. The route gap is separate, and the cheapest to close.
 
 ---
 
