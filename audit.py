@@ -83,7 +83,7 @@ def log_appeal(content_id: str, creator_id: str, reasoning: str) -> dict:
     decided, that it was challenged, and in what order.
     """
     return _append({
-        "timestamp": _now(),
+        **_blank_entry(),
         "content_id": content_id,
         "creator_id": creator_id,
         "event": "appeal",
@@ -103,13 +103,33 @@ def log_rejection(creator_id: str, reason: str, **extra) -> dict:
     quiet afternoon.
     """
     return _append({
-        "timestamp": _now(),
+        **_blank_entry(),
         "creator_id": creator_id,
         "event": "rejected",
         "status": "rejected",
         "reason": reason,
         **extra,
     })
+
+
+def _blank_entry() -> dict:
+    """
+    All nine fields, null where there was no decision.
+
+    Appeals and rejections carry the same keys as decisions, so every line in
+    the log has one shape and can be compared with any other.
+    """
+    return {
+        "timestamp": _now(),
+        "content_id": None,
+        "creator_id": None,
+        "guess": None,
+        "model_score": None,
+        "style_score": None,
+        "combined_score": None,
+        "label": None,
+        "status": None,
+    }
 
 
 def _append(entry: dict) -> dict:

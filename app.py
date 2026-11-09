@@ -151,7 +151,7 @@ def health():
 # ── YOU BUILD THIS ────────────────────────────────────────────────────────────
 
 @app.post("/submit")
-# @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
+@limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
 def submit():
     """
     Take a piece of text, decide about it, log the decision, answer.
@@ -251,6 +251,7 @@ def submit():
         combined_score=combined_score,
         label=label,
         status="decided",
+        rule=_scoring_rule(),
     )
 
     return jsonify({
@@ -271,6 +272,23 @@ def submit():
 MAX_TEXT_CHARS = 20_000
 MAX_CREATOR_ID_CHARS = 100
 MAX_REASONING_CHARS = 5_000
+
+
+def _scoring_rule() -> dict:
+    """
+    The settings a decision was made under, logged beside it.
+
+    Change a threshold in config.py and the old entries still say which rule
+    produced them — so a before/after comparison doesn't need the git history.
+    """
+    return {
+        "weight_model": config.WEIGHT_MODEL_SIGNAL,
+        "weight_style": config.WEIGHT_STYLE_SIGNAL,
+        "both_signals_floor": config.BOTH_SIGNALS_FLOOR,
+        "disagreement_cap": config.DISAGREEMENT_CAP,
+        "human_threshold": config.HUMAN_THRESHOLD,
+        "ai_threshold": config.AI_THRESHOLD,
+    }
 
 
 def _refuse(status: int, error: str, message: str, creator_id: str = "unknown", **extra):

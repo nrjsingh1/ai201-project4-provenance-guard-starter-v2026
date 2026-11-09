@@ -326,25 +326,41 @@ changed the design.
 
 ## Rate Limiting
 
-**My limits:** ___ per minute, ___ per day
+**My limits:** 5 per minute, 50 per day
 
 **Why those numbers and not others:**
-<!-- Think about two people: a real writer submitting their own work a few
-     times an hour, and a script sending a thousand variations to map your
-     thresholds. Your numbers have to be liveable for the first and hostile to
-     the second. -->
 
-**What a caller counts as:** <!-- per address, or per creator_id? They fail
-differently — one script can look like a thousand callers, and one household
-can look like one. -->
+*5 per minute — writer pace.* A writer submits, reads the label, edits, and
+resubmits — about one submission every minute or two. Five leaves room for a
+quick fix-and-retry without ever hitting the limit, while a script can only try
+five variations a minute.
+
+*50 per day — slows threshold mapping.* A heavy day for a real writer is a few
+pieces with several revisions each, well under 50. A script mapping my
+thresholds with 1,000 variations needs 20 days per `creator_id` to do it.
+
+**What a caller counts as:** the `creator_id` in the request, or the caller's
+IP address when there isn't one (the starter's `rate_limit_key`). That's fair
+to writers on a shared network — a household or a school isn't one caller.
+The cost: a script that sends a **new `creator_id` with every request** looks
+like a thousand different callers, and neither limit ever applies to it. Both
+numbers above only slow a caller who keeps the same name.
 
 **The run of status codes when I pushed past it:**
 
 <!-- python run_attacks.py --flood 15 -->
 
 ```
+15 submissions as 'flood_tester' against http://127.0.0.1:5050
 
+200 200 200 200 200 429 429 429 429 429 429 429 429 429 429
+
+10 of 15 were rate limited.
 ```
+
+Each `429` left a `rejected` entry in the log (`reason: rate_limited`,
+`limit: "5 per 1 minute"`), so a flood shows up as a trace, not as silence.
+Full run: `results/flood_2026-11-08_2116.md`.
 
 ---
 
