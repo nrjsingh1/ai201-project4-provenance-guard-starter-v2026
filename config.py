@@ -81,7 +81,7 @@ DISAGREEMENT_CAP = 0.70
 # that decide who pays for it.
 
 HUMAN_THRESHOLD = 0.35
-AI_THRESHOLD = 0.75     # raised from 0.65 in Milestone 4 — see TRACE.md section 3
+AI_THRESHOLD = 0.80     # 0.65 → 0.75 in unit 7 M4; 0.75 → 0.80 in unit 8 M5 (FP03, FP04 scored 0.76)
 
 # ⚠️ One thing that catches people out in Milestone 5. A weighted average can
 # only land between its two inputs — so while `style_signal` is still the stub
