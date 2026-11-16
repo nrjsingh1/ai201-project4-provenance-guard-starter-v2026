@@ -1357,6 +1357,82 @@ worker held **1.2 GB** (RSS from `ps`), up from 930 MB after the first. That,
 not the 34 ms, is why this runs locally: one worker needs more than twice a
 512 MB free tier before it has answered anyone.
 
+
+## Run Log — Unit 9
+
+`python run_capstone.py --trial 1`, `--trial 2`, `--trial 3`
+([run_capstone.py](run_capstone.py)). Each trial starts its own gunicorn, sends
+500 `/submit` plus 6 `/appeal`, reads the worker's memory, stops it, then starts
+a second gunicorn with no model for the 503. Nothing changed between trials.
+Output: `results/capstone_trial_1.json`, `_2`, `_3`.
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. Every request leaves a record | 100% of ≥100 | 506/507 | 506/507 | 506/507 | **MISSED** |
+| 2. Every kind of failure leaves a record | 6 of 6 | 5/6 | 5/6 | 5/6 | **MISSED** |
+| 3. RUNNING.md works for someone else | 0 questions | not run | not run | not run | **no verdict yet** |
+| 4. Cold ≤ 10 s, p95 of next 100 ≤ 100 ms | both | cold 1.74 s · p95 37.8 ms | cold 1.89 s · p95 36.7 ms | cold 1.77 s · p95 34.4 ms | MET |
+| 5. Worker RSS after 500 < 1,572,864 KB | below | 1,182,544 KB | 1,153,056 KB | 1,179,552 KB | MET |
+
+**How each was decided.**
+
+1. **MISSED** — 506 of 507 in every trial. The one line with no record is a
+   `429`: the rate-limit record carries `route` but no `http_status`, so nothing
+   matches "same status". That's the reading where a decision counts as `/submit
+   200` and an appeal as `/appeal 200`, because those events only come from
+   there. Using only fields a record states outright, it's **5 of 507** — decision
+   and appeal records never say their HTTP status. Missed either way.
+2. **MISSED** — 5 of 6 in every trial: 400, 413, 422, 500 and 503 pass; 429 has
+   a record, but with no `http_status`. Same gap as criterion 1. The starter's
+   `429` handler never wrote the field, and I didn't add it when I added the
+   others in Milestone 3.
+3. **No verdict yet** — it needs a person who isn't me. Not run.
+4. **MET** — cold starts of 1.74–1.89 s against 10 s; p95 of 34.4–37.8 ms
+   against 100 ms. The trials differ slightly, as separate runs should.
+5. **MET** — 1,153,056–1,182,544 KB, about 75% of the ceiling.
+
+**Two harness bugs, fixed before the three trials that count.** My first
+attempt counted appeal records as warm submissions (an appeal copies the
+writer's `creator_id`) and crashed; the second matched access lines against
+records collected *before* the no-model server ran, so its 503 looked
+unrecorded. Both were in `run_capstone.py`, not the service. The service didn't
+change. Those runs' requests are still in `logs/` — append-only — but their
+result files were overwritten.
+
+**Real output from trial 1**, from `results/capstone_trial_1.json`, produced by
+`run_capstone.py::main`.
+
+*Criterion 1 — `run_capstone.py::match_records`, the line with no record:*
+
+```json
+["[16/Nov/2026:16:50:33 -0500] \"POST /submit HTTP/1.1\" 429 103 0.000521s 127.0.0.1"]
+```
+
+*Criterion 2 — `run_capstone.py::main`, the failing kind (429) beside a
+passing one (503). Labels are null on both; left out here.*
+
+```json
+{"client_status": 429, "passed": false}
+{"timestamp": "2026-11-16T21:50:33+00:00", "content_id": null, "creator_id": "cap1_burst", "guess": null, "model_score": null, "style_score": null, "combined_score": null, "status": "rejected", "event": "rejected", "reason": "rate_limited", "limit": "5 per 1 minute", "route": "/submit", "duration_ms": 0.2}
+```
+
+```json
+{"client_status": 503, "passed": true}
+{"timestamp": "2026-11-16T21:50:48+00:00", "content_id": null, "creator_id": "cap1_nomodel", "guess": null, "model_score": null, "style_score": null, "combined_score": null, "status": "rejected", "event": "rejected", "reason": "detector_unavailable", "http_status": 503, "route": "/submit", "duration_ms": 1250.5, "text_length": 696, "text_words": 97, "text_preview": "Artificial intelligence is transforming the way we live and "}
+```
+
+*Criterion 4 — `run_capstone.py::main`:*
+
+```json
+{"cold_s": 1.74, "first_status": 200, "warm_n": 100, "p95_ms": 37.8, "median_ms": 31.1, "max_ms": 43.2}
+```
+
+*Criterion 5 — `run_capstone.py::worker_rss_kb`, worker pid → RSS in KB:*
+
+```json
+{"submits": 500, "worker_rss_kb": {"18118": 1182544}, "below_target": true}
+```
+
 ---
 
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**
