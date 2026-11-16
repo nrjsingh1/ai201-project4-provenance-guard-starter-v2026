@@ -1220,23 +1220,27 @@ honest writers whose work now competes with AI-written pieces that got through.
 Unit 9 extends Provenance Guard. Everything from here down is the capstone;
 the sections above are units 7 and 8.
 
-### The Shape
+**What This Extends**
 
-**System:** Provenance Guard. **Shape: B — local, with logs.**
+Provenance Guard — the AI-writing detector from units 7 and 8: a Flask
+service that scores a piece of writing with two signals (gpt2 perplexity and
+stylometry), labels it human, unsure or AI, and takes appeals. What's new in
+unit 9 is everything around it rather than inside it: it now runs under
+`gunicorn`, a production server, with one worker; every request to `/submit`
+and `/appeal` — decisions, refusals, rate limits and crashes — writes a
+structured record with its route, HTTP status, timing and input; gunicorn
+writes an access log of every HTTP request; and `RUNNING.md` takes a fresh
+machine from `git clone` to a working service. The detector's scoring, labels
+and thresholds are unchanged from the end of unit 8.
 
-I'm running Provenance Guard the way a real deployment would, on my own
-machine: under `gunicorn` instead of Flask's development server, bound through
-the `HOST` and `PORT` environment variables, with one worker, and with
-gunicorn's access and error logs written to files in `logs/` beside the audit
-log. When it's done I'll claim one thing: the service runs under a production
-server and every request leaves a trace in a file. It stays local because it
-can't fit a free host. Measured on my machine, the gpt2 weights are 525 MB and
-torch is 626 MB on disk — over 1.1 GB before Flask starts, against a 512 MB
-free tier — and a free host has no persistent disk, so the model would download
-again after every idle spin-down. One worker, because each worker would load
-its own copy of gpt2, and because my rate limiter keeps its counts in memory:
-two workers would each allow 5 a minute, so the limit I tested in unit 8 would
-quietly double.
+**The Shape**
+
+**Shape C — the operational scaffolding.** I'm adding no new capability and no
+new defence: the extension is the scaffolding that lets the service run like a
+real deployment and leave a record of what it did — a production server, one
+worker, request logs, failure records and run instructions. When it's done I'll
+claim one thing: the service runs under a production server and every request
+leaves a trace in a file.
 
 **Out of scope:**
 
@@ -1253,7 +1257,10 @@ quietly double.
 **Size check:** one config file and one run command, plus the write-up of the
 arithmetic — well under ninety minutes of building.
 
-#### Running it
+**Running It**
+
+**Path B — local, with logs.** The full start command and what the machine
+needs are in [RUNNING.md](RUNNING.md); in short:
 
 ```bash
 gunicorn -c gunicorn.conf.py app:app
@@ -1266,9 +1273,14 @@ first request's model load isn't killed, and two log files —
 `logs/gunicorn.log` (server start-up, worker boots, crashes). `python app.py`
 still works for local development.
 
-**Measured, not just on disk:** after loading gpt2, the one worker holds
-**930 MB** of memory (RSS), read with `ps` while it served requests — 1.8× a
-512 MB free tier, from one worker.
+**Why it isn't hosted.** On disk the gpt2 weights are 525 MB and torch is
+626 MB — over 1.1 GB before Flask starts, against a 512 MB free tier. In
+memory it's worse: after loading gpt2 the one worker holds **930 MB** (RSS,
+read with `ps`), and 1.2 GB after a few requests. A free host also has no
+persistent disk, so the model would download again after every idle spin-down.
+One worker, because each worker would load its own copy of gpt2, and because
+the rate limiter keeps its counts in memory: two workers would each allow 5 a
+minute, quietly doubling the limit unit 8 tested.
 
 **The original system still works.** Under gunicorn, `test.py` passes 9/9, the
 flood test gives the same `200 ×5, 429 ×10`
@@ -1276,8 +1288,15 @@ flood test gives the same `200 ×5, 429 ×10`
 (`results/run_2026-11-16_1624_unit9-gunicorn.md`) are identical to the unit 8
 "after" run — status, guess and all three scores.
 
+**Testing `RUNNING.md` on myself.** I cloned the repo into an empty folder,
+with an empty model cache, and followed it line by line. It failed the first
+time: on my machine plain `python3` is **3.15**, so `python3 -m venv` built an
+environment `test.py` rejects. `RUNNING.md` now names `python3.13` and says
+why. The second run went clean from clone to a labelled `/submit`. One more
+thing a reader will meet: `logs/` is committed, so a fresh clone starts with my
+records in it and appends after them.
 
-### Instrumentation
+**Instrumentation**
 
 Every request to `/submit` and `/appeal` writes one JSON record to
 `logs/audit.jsonl` — decisions, refusals, rate limits and crashes alike. Each
@@ -1332,15 +1351,7 @@ downloads turned off.
 
 Before unit 9, the crash would have been a bare `500` and no record at all.
 
-**Testing `RUNNING.md` on myself.** I cloned the repo into an empty folder,
-with an empty model cache, and followed it line by line. It failed the first
-time: on my machine plain `python3` is **3.15**, so `python3 -m venv` built an
-environment `test.py` rejects. `RUNNING.md` now names `python3.13` and says
-why. The second run went clean from clone to a labelled `/submit`. One more
-thing a reader will meet: `logs/` is committed, so a fresh clone starts with my
-records in it and appends after them.
-
-### What It Costs
+**What It Costs**
 
 No API, no key, no per-request bill: the cost is **compute on my machine**.
 
@@ -1381,8 +1392,7 @@ The audit log grows too: a decision record averages 850 bytes
 (`results/cost_run_unit9.jsonl`), so 300 × 850 B ≈ 255 KB a day, ≈ 93 MB a
 year, kept forever unless something rotates it.
 
-
-### Run Log — Unit 9
+**Run Log and Verdicts**
 
 `python run_capstone.py --trial 1`, `--trial 2`, `--trial 3`
 ([run_capstone.py](run_capstone.py)). Each trial starts its own gunicorn, sends
@@ -1398,9 +1408,7 @@ Output: `results/capstone_trial_1.json`, `_2`, `_3`.
 | 4. Cold ≤ 10 s, p95 of next 100 ≤ 100 ms | both | cold 1.74 s · p95 37.8 ms | cold 1.89 s · p95 36.7 ms | cold 1.77 s · p95 34.4 ms | MET |
 | 5. Worker RSS after 500 < 1,572,864 KB | below | 1,182,544 KB | 1,153,056 KB | 1,179,552 KB | MET |
 
-**How each was decided.**
-
-1. **MISSED** — 506 of 507 in every trial. The one line with no record is a
+**How each was decided.**1. **MISSED** — 506 of 507 in every trial. The one line with no record is a
    `429`: the rate-limit record carries `route` but no `http_status`, so nothing
    matches "same status". That's the reading where a decision counts as `/submit
    200` and an appeal as `/appeal 200`, because those events only come from
@@ -1414,6 +1422,23 @@ Output: `results/capstone_trial_1.json`, `_2`, `_3`.
 4. **MET** — cold starts of 1.74–1.89 s against 10 s; p95 of 34.4–37.8 ms
    against 100 ms. The trials differ slightly, as separate runs should.
 5. **MET** — 1,153,056–1,182,544 KB, about 75% of the ceiling.
+
+**Where the misses came from — one problem, two symptoms.** Both misses are the same
+record: the one written for a rate-limited request.
+
+*Stage: the rate-limit layer* — Flask-Limiter and the `rate_limited` error
+handler in `app.py`, which turn a request away *before* the `/submit` route
+runs. *Mechanism:* every refusal inside the route goes through `_refuse`, which
+writes `http_status`. A `429` never reaches the route, so it's recorded by the
+starter's separate handler instead — and when I added route and timing to every
+record in Milestone 3, I added them to that handler but not `http_status`. The
+record exists; it just can't be matched to the response it belongs to. That's
+criterion 2's 5 of 6, and the one unmatched line in criterion 1's 506 of 507.
+
+*The pattern under it:* a record is assembled in four places — the decision in
+`submit`, `_refuse`, the 429 handler, and `log_appeal` — and only `_refuse`
+wrote the HTTP status. That's also why the strict reading of criterion 1 found
+only 5 of 507: decisions and appeals never stated theirs either.
 
 **Two harness bugs, fixed before the three trials that count.** My first
 attempt counted appeal records as warm submissions (an appeal copies the
@@ -1457,28 +1482,7 @@ passing one (503). Labels are null on both; left out here.*
 {"submits": 500, "worker_rss_kb": {"18118": 1182544}, "below_target": true}
 ```
 
-
-### Diagnosis and the Fix — Unit 9
-
-**Verdicts, against the Milestone 4 targets:** 1 MISSED, 2 MISSED, 3 no
-verdict (not run — it needs another person), 4 MET, 5 MET.
-
-**The diagnosis — one problem, two symptoms.** Both misses are the same
-record: the one written for a rate-limited request.
-
-*Stage: the rate-limit layer* — Flask-Limiter and the `rate_limited` error
-handler in `app.py`, which turn a request away *before* the `/submit` route
-runs. *Mechanism:* every refusal inside the route goes through `_refuse`, which
-writes `http_status`. A `429` never reaches the route, so it's recorded by the
-starter's separate handler instead — and when I added route and timing to every
-record in Milestone 3, I added them to that handler but not `http_status`. The
-record exists; it just can't be matched to the response it belongs to. That's
-criterion 2's 5 of 6, and the one unmatched line in criterion 1's 506 of 507.
-
-*The pattern under it:* a record is assembled in four places — the decision in
-`submit`, `_refuse`, the 429 handler, and `log_appeal` — and only `_refuse`
-wrote the HTTP status. That's also why the strict reading of criterion 1 found
-only 5 of 507: decisions and appeals never stated theirs either.
+**The Improvement**
 
 **The one fix:** every audit record now states the HTTP status it answered
 with — `http_status` added in the three places that lacked it (`app.py`,
@@ -1486,14 +1490,18 @@ with — `http_status` added in the three places that lacked it (`app.py`,
 same three trials (`python run_capstone.py --trial N --label after`, output
 `results/capstone_trial_N_after.json`).
 
-| Criterion | Target | Before (runs 1 / 2 / 3) | After (runs 1 / 2 / 3) | Verdict after |
-|---|---|---|---|---|
-| 1. Every request leaves a record | 100% | 506/507 / 506/507 / 506/507 | 507/507 / 507/507 / 507/507 | **MET** |
-| — strict reading (stated fields only) | 100% | 5/507 / 5/507 / 5/507 | 507/507 / 507/507 / 507/507 | **MET** |
-| 2. Every failure kind leaves a record | 6 of 6 | 5/6 / 5/6 / 5/6 | 6/6 / 6/6 / 6/6 | **MET** |
-| 3. RUNNING.md, someone else | 0 questions | not run | not run | no verdict |
-| 4. Cold ≤ 10 s · p95 ≤ 100 ms | both | 1.74 s · 37.8 ms / 1.89 s · 36.7 ms / 1.77 s · 34.4 ms | 2.65 s · 38.7 ms / 1.75 s · 35.2 ms / 1.95 s · 35.6 ms | MET |
-| 5. Worker RSS < 1,572,864 KB | below | 1,182,544 KB / 1,153,056 KB / 1,179,552 KB | 1,182,656 KB / 1,191,168 KB / 1,187,728 KB | MET |
+The second run log, same format:
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. Every request leaves a record | 100% of ≥100 | 507/507 | 507/507 | 507/507 | MET |
+| 2. Every kind of failure leaves a record | 6 of 6 | 6/6 | 6/6 | 6/6 | MET |
+| 3. RUNNING.md works for someone else | 0 questions | not run | not run | not run | **no verdict yet** |
+| 4. Cold ≤ 10 s, p95 of next 100 ≤ 100 ms | both | cold 2.65 s · p95 38.7 ms | cold 1.75 s · p95 35.2 ms | cold 1.95 s · p95 35.6 ms | MET |
+| 5. Worker RSS after 500 < 1,572,864 KB | below | 1,182,656 KB | 1,191,168 KB | 1,187,728 KB | MET |
+
+Criterion 1 under the strict reading (fields a record states outright) went
+from 5/507 to **507/507** in all three runs; before, it's in the table above.
 
 *The 429 record after the fix — trial 1, `run_capstone.py::main`:*
 
@@ -1508,13 +1516,7 @@ higher than the others (1.67–1.95 s before and after), but nothing in the fix
 runs before the model loads, and it's still a quarter of the target; I read it
 as noise, not a regression.
 
-**Targets I'd tighten.** Criteria 4 and 5 met with room to spare: p95 never
-went above 39 ms against 100, and memory peaked at 76% of the ceiling. 100 ms
-was set before I'd timed a run under gunicorn — I'd tighten p95 to **50 ms**,
-which every trial still meets but a slowdown of a third would break.
-
-
-### What's Still Broken
+**What's Still Broken**
 
 **Criterion 3 — no verdict.** It's the one criterion I couldn't run myself: it
 needs a person who isn't me to follow `RUNNING.md` from `git clone` to a
@@ -1547,7 +1549,7 @@ in a file that is committed and kept forever. Speed and memory are already
 inside their targets; storing people's writing without asking is the one
 problem that gets worse with every request.
 
-### How I Used AI
+**How I Used AI**
 
 Claude Code built this extension with me in the repository: it wrote the
 gunicorn config, the instrumentation, the test harness and most of this
