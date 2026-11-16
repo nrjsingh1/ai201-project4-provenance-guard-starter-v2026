@@ -198,6 +198,19 @@ Python version. The only test that counts is a reader who doesn't know what I
 meant. Zero, because each question is a step another reader would get stuck on
 with nobody to ask.
 
+> **Revised in unit 9, Milestone 6:** In each of three separate runs, a reader
+> with no context — an AI agent started fresh, working in an empty folder with
+> an empty model cache, given only the repository URL — follows `RUNNING.md`
+> from `git clone` to the `curl` example returning a `label`, and lists every
+> point where it needed something neither `RUNNING.md` nor an error message
+> told it. **Zero such points, in each of the three runs.**
+>
+> **Why revised:** I couldn't find a person to run the original before grading,
+> so as written it produced no runs and no verdict. This is a weaker test — an
+> AI agent isn't the human reader the original was written for, and it may know
+> things a person wouldn't — so the original line stays above, unmet and
+> unmeasured. The revision is honest about being a stand-in, not a substitute.
+
 ## 4. Fast enough that nobody notices, even on the first request
 
 In one gunicorn run, with gpt2 already downloaded: **the first `/submit` after
