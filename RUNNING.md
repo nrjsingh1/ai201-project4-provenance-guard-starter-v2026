@@ -1,6 +1,59 @@
 # Running Provenance Guard
 
-Everything about how the starter works.
+## Run it — local, under gunicorn (unit 9, Path B)
+
+Provenance Guard runs on your own machine, not a host: the model and torch need
+about 930 MB of memory once loaded, and a free tier gives 512 MB. Everything
+below is what a fresh machine needs.
+
+**You need:** macOS or Linux · Python **3.11, 3.12 or 3.13** (not 3.14) ·
+about **2 GB free disk** (torch and its friends ~1.2 GB, the gpt2 weights
+525 MB) · about **1 GB free RAM** · an internet connection the first time.
+No API key, no account.
+
+```bash
+git clone https://github.com/nrjsingh1/ai201-project4-provenance-guard-starter-v2026.git
+cd ai201-project4-provenance-guard-starter-v2026
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt     # a few minutes: torch is large
+python test.py                      # passes, with one WARN: model not downloaded
+python detector.py                  # downloads gpt2 (~525 MB) once, scores a sample
+gunicorn -c gunicorn.conf.py app:app
+```
+
+It's running when the terminal says `Listening at: http://127.0.0.1:5000`. In a
+second terminal:
+
+```bash
+curl -X POST http://127.0.0.1:5000/submit \
+  -H "Content-Type: application/json" \
+  -d '{"text": "My grandmother kept a jar of buttons on the windowsill, and on wet Sundays she would tip it out across the kitchen table so I could sort them by colour.", "creator_id": "me"}'
+```
+
+You should get back JSON with a `content_id`, a `guess` and a `label`.
+
+**Environment variables** — all optional:
+
+| Variable | Default | When to set it |
+|---|---|---|
+| `PORT` | `5000` | Port 5000 is taken — on macOS, AirPlay Receiver holds it. `PORT=5050 gunicorn -c gunicorn.conf.py app:app` |
+| `HOST` | `127.0.0.1` | Only your machine can reach it. `0.0.0.0` opens it to your network |
+| `AI201_RATE_LIMITS` | `1` | `0` turns rate limiting off |
+
+**Where it records what it did** (all in `logs/`):
+
+| File | What's in it |
+|---|---|
+| `audit.jsonl` | One JSON record per request to `/submit` and `/appeal`: decision, refusal, rate limit or crash, with timing and input size. `curl "http://127.0.0.1:5000/log?limit=10"` reads it back |
+| `access.log` | Every HTTP request, with status and seconds taken |
+| `gunicorn.log` | Server start-up, worker boots, worker crashes and timeouts |
+
+`python app.py` still works too — Flask's development server, for editing.
+
+---
+
+Everything below is the starter's original guide to how the project works.
 
 This is a **web service**. It runs on your machine and you talk to it with
 `curl` from another terminal. If you've not built a backend before, that's
