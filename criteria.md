@@ -148,3 +148,78 @@ is in when it isn't, which is worse than an error.
      A number you missed stays where it is, gets diagnosed, and gets a fix
      attempted. That's where the points are.
      ───────────────────────────────────────────────────────────────────────── -->
+
+---
+
+# Unit 9 — criteria for the extension
+
+The extension: Provenance Guard running under gunicorn with one worker, with
+every request recorded (see README → The Shape). Written before any unit 9
+test results; definitions tightened after a cold self-check, targets unchanged. Criteria 1–4 are about what's new; 5 is about running it.
+
+## 1. Every request leaves a record
+
+Across at least 100 requests to `/submit` and `/appeal` in one gunicorn run,
+**100% of the `/submit` and `/appeal` lines in `logs/access.log` have a matching
+record in `logs/audit.jsonl`.** A record matches a line when it has the same
+route and the same HTTP status and its timestamp is no more than 2 seconds
+from the line's; each record can match only one line.
+
+**Why this target:** the log exists so an attack can't hide. A request with no
+record is exactly the "absence you'll never find" unit 8 warned about, so one
+gap is a failure — there's no number of missing records I'd accept. 100
+requests is enough to include refusals and rate limits, not only decisions.
+
+## 2. Every kind of failure leaves a record
+
+**Six kinds of failure — 400 (bad input), 413 (too long), 422 (too short to
+score), 429 (rate limited), 500 (a crash) and 503 (the model can't load) — each
+write an audit record with `event`, `http_status` and `duration_ms` filled in
+— not null — and with `http_status` equal to the status the client received:
+6 of 6.** The 500 and 503 have to be caused on purpose: a forced exception in a
+signal, and the service started with a model name that doesn't exist.
+
+**Why this target:** before unit 9 a crash was a bare 500 and nothing in the
+log, so every kind has to be checked, not just the common ones. Missing any one
+kind means a whole class of failure is invisible. I'm counting kinds, not
+requests, because criterion 1 already covers volume.
+
+## 3. RUNNING.md works for someone who isn't me
+
+**A person other than me, on their own machine, follows `RUNNING.md` from
+`git clone` to the `curl` example in `RUNNING.md` returning a `label` — without
+asking me anything. Zero questions.** A question means asking me, in any form;
+their own searching for an error message is allowed. Any command they need
+that isn't in the file is a miss.
+
+**Why this target:** I've already followed it myself, and I wrote it, so I
+can't see what it leaves out — my own fresh run still failed once on the
+Python version. The only test that counts is a reader who doesn't know what I
+meant. Zero, because each question is a step another reader would get stuck on
+with nobody to ask.
+
+## 4. Fast enough that nobody notices, even on the first request
+
+In one gunicorn run, with gpt2 already downloaded: **the first `/submit` after
+start-up — the one that loads the model — takes at most 10 seconds**, timed at
+the client from sending the request to receiving the response; and over the
+next 100 `/submit` requests, **the 95th-smallest `duration_ms` (the server's
+own timing in the audit record) is at most 100 ms.**
+
+**Why this target:** a writer doesn't notice a tenth of a second, so 100 ms is
+the line for "it just answered". The cold start is the risk: gunicorn kills a
+worker after 120 seconds and a person gives up far sooner — 10 seconds is
+about the longest a first visitor waits before deciding it's broken. p95
+rather than the average, because one slow request in twenty is still one a
+person sits through.
+
+## 5. Memory stays under a ceiling
+
+After 500 `/submit` requests in one gunicorn run, **the worker process's
+memory — RSS from `ps`, the worker and not the gunicorn master — is below
+1,572,864 KB (1.5 GiB)**, read once, straight after request 500.
+
+**Why this target:** the one worker holds gpt2 and torch, and the machine it
+runs on has other things to do. 1.5 GB is the most I'd let a single local
+service take before it starts competing with everything else on a laptop; past
+that, the "runs locally" answer from Milestone 1 stops being a reasonable one.
