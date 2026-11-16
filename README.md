@@ -1248,6 +1248,29 @@ quietly double.
 **Size check:** one config file and one run command, plus the write-up of the
 arithmetic — well under ninety minutes of building.
 
+### Running it
+
+```bash
+gunicorn -c gunicorn.conf.py app:app
+```
+
+Settings live in [gunicorn.conf.py](gunicorn.conf.py): the address from `HOST`
+and `PORT` (same as `python app.py`), one worker, a 120-second timeout so the
+first request's model load isn't killed, and two log files —
+`logs/access.log` (every request, with its status and how long it took) and
+`logs/gunicorn.log` (server start-up, worker boots, crashes). `python app.py`
+still works for local development.
+
+**Measured, not just on disk:** after loading gpt2, the one worker holds
+**930 MB** of memory (RSS), read with `ps` while it served requests — 1.8× a
+512 MB free tier, from one worker.
+
+**The original system still works.** Under gunicorn, `test.py` passes 9/9, the
+flood test gives the same `200 ×5, 429 ×10`
+(`results/flood_2026-11-16_1623.md`), and all 69 rows of the criteria run
+(`results/run_2026-11-16_1624_unit9-gunicorn.md`) are identical to the unit 8
+"after" run — status, guess and all three scores.
+
 ---
 
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**

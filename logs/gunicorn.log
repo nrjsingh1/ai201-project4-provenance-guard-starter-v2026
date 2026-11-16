@@ -2,3 +2,6 @@
 [2026-11-16 16:23:06 -0500] [16001] [INFO] Listening at: http://127.0.0.1:5050 (16001)
 [2026-11-16 16:23:06 -0500] [16001] [INFO] Using worker: sync
 [2026-11-16 16:23:06 -0500] [16005] [INFO] Booting worker with pid: 16005
+[2026-11-16 16:24:24 -0500] [16005] [INFO] Worker exiting (pid: 16005)
+[2026-11-16 16:24:24 -0500] [16001] [INFO] Handling signal: term
+[2026-11-16 16:24:25 -0500] [16001] [INFO] Shutting down: Master
