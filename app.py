@@ -160,6 +160,7 @@ if config.RATE_LIMITING_ENABLED:
             creator_id=payload.get("creator_id", "unknown"),
             reason="rate_limited",
             limit=str(exc.description),
+            http_status=429,
             **_trace(),
         )
         return jsonify({
@@ -307,6 +308,7 @@ def submit():
         status="decided",
         rule=_scoring_rule(),
         cold_start=cold_start,
+        http_status=200,
         **_trace(),
     )
 
@@ -410,7 +412,8 @@ def appeal():
                        decision["creator_id"], content_id=content_id)
 
     # creator_id comes from the original decision, not the request (TRACE.md).
-    entry = audit.log_appeal(content_id, decision["creator_id"], reasoning)
+    entry = audit.log_appeal(content_id, decision["creator_id"], reasoning,
+                             http_status=200, **_trace())
 
     return jsonify({
         "content_id": content_id,
