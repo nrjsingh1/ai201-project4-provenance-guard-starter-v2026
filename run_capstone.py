@@ -145,6 +145,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--trial", type=int, required=True)
     parser.add_argument("--port", type=int, default=5070)
+    parser.add_argument("--label", default="", help="e.g. after")
     args = parser.parse_args()
     t = args.trial
     tag = f"cap{t}"
@@ -222,7 +223,7 @@ def main():
         "criterion_5": {"submits": 500, "worker_rss_kb": rss,
                         "below_target": all(v < TARGETS["rss_kb"] for v in rss.values())},
     }
-    path = config.RESULTS_DIR / f"capstone_trial_{t}.json"
+    path = config.RESULTS_DIR / f"capstone_trial_{t}{'_' + args.label if args.label else ''}.json"
     path.write_text(json.dumps(report, indent=2, ensure_ascii=False))
 
     c1 = report["criterion_1"]

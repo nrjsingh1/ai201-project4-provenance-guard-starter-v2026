@@ -1,0 +1,194 @@
+{
+  "trial": 2,
+  "when": "2026-11-16T16:54:26",
+  "statuses": {
+    "appeal_200": [
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "appeal_404": 404,
+    "400": 400,
+    "413": 413,
+    "422": 422,
+    "429_burst": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      429
+    ],
+    "503": 503,
+    "500": 500
+  },
+  "criterion_1": {
+    "strict": {
+      "lines": 507,
+      "matched": 507,
+      "unmatched": []
+    },
+    "inferred": {
+      "lines": 507,
+      "matched": 507,
+      "unmatched": []
+    }
+  },
+  "criterion_2": {
+    "passed": 6,
+    "of": 6,
+    "kinds": {
+      "400": {
+        "client_status": 400,
+        "passed": true,
+        "record": {
+          "timestamp": "2026-11-16T21:54:07+00:00",
+          "content_id": null,
+          "creator_id": "cap2_bad",
+          "guess": null,
+          "model_score": null,
+          "style_score": null,
+          "combined_score": null,
+          "label": null,
+          "status": "rejected",
+          "event": "rejected",
+          "reason": "missing_text",
+          "http_status": 400,
+          "route": "/submit",
+          "duration_ms": 0.2
+        }
+      },
+      "413": {
+        "client_status": 413,
+        "passed": true,
+        "record": {
+          "timestamp": "2026-11-16T21:54:07+00:00",
+          "content_id": null,
+          "creator_id": "cap2_long",
+          "guess": null,
+          "model_score": null,
+          "style_score": null,
+          "combined_score": null,
+          "label": null,
+          "status": "rejected",
+          "event": "rejected",
+          "reason": "text_too_long",
+          "http_status": 413,
+          "route": "/submit",
+          "duration_ms": 0.1,
+          "text_length": 24999,
+          "text_words": 5000,
+          "text_preview": "word word word word word word word word word word word word "
+        }
+      },
+      "422": {
+        "client_status": 422,
+        "passed": true,
+        "record": {
+          "timestamp": "2026-11-16T21:54:07+00:00",
+          "content_id": null,
+          "creator_id": "cap2_short",
+          "guess": null,
+          "model_score": null,
+          "style_score": null,
+          "combined_score": null,
+          "label": null,
+          "status": "rejected",
+          "event": "rejected",
+          "reason": "text_too_short",
+          "http_status": 422,
+          "route": "/submit",
+          "duration_ms": 0.2,
+          "text_length": 2,
+          "text_words": 1,
+          "text_preview": "Hi"
+        }
+      },
+      "429": {
+        "client_status": 429,
+        "passed": true,
+        "record": {
+          "timestamp": "2026-11-16T21:54:07+00:00",
+          "content_id": null,
+          "creator_id": "cap2_burst",
+          "guess": null,
+          "model_score": null,
+          "style_score": null,
+          "combined_score": null,
+          "label": null,
+          "status": "rejected",
+          "event": "rejected",
+          "reason": "rate_limited",
+          "limit": "5 per 1 minute",
+          "http_status": 429,
+          "route": "/submit",
+          "duration_ms": 0.2
+        }
+      },
+      "503": {
+        "client_status": 503,
+        "passed": true,
+        "record": {
+          "timestamp": "2026-11-16T21:54:23+00:00",
+          "content_id": null,
+          "creator_id": "cap2_nomodel",
+          "guess": null,
+          "model_score": null,
+          "style_score": null,
+          "combined_score": null,
+          "label": null,
+          "status": "rejected",
+          "event": "rejected",
+          "reason": "detector_unavailable",
+          "http_status": 503,
+          "route": "/submit",
+          "duration_ms": 1808.3,
+          "text_length": 696,
+          "text_words": 97,
+          "text_preview": "Artificial intelligence is transforming the way we live and "
+        }
+      },
+      "500": {
+        "client_status": 500,
+        "passed": true,
+        "record": {
+          "timestamp": "2026-11-16T21:54:26+00:00",
+          "content_id": null,
+          "creator_id": "capstone_crash",
+          "guess": null,
+          "model_score": null,
+          "style_score": null,
+          "combined_score": null,
+          "label": null,
+          "status": "error",
+          "event": "error",
+          "error_type": "ZeroDivisionError",
+          "error_message": "division by zero",
+          "http_status": 500,
+          "route": "/submit",
+          "duration_ms": 1782.8,
+          "text_length": 70,
+          "text_words": 14,
+          "text_preview": "Long enough to reach signal two, which is set to fail on pur"
+        }
+      }
+    }
+  },
+  "criterion_4": {
+    "cold_s": 1.75,
+    "first_status": 200,
+    "warm_n": 100,
+    "p95_ms": 35.2,
+    "median_ms": 29.9,
+    "max_ms": 39.3
+  },
+  "criterion_5": {
+    "submits": 500,
+    "worker_rss_kb": {
+      "18490": 1191168
+    },
+    "below_target": true
+  }
+}

@@ -1433,6 +1433,62 @@ passing one (503). Labels are null on both; left out here.*
 {"submits": 500, "worker_rss_kb": {"18118": 1182544}, "below_target": true}
 ```
 
+
+## Diagnosis and the Fix — Unit 9
+
+**Verdicts, against the Milestone 4 targets:** 1 MISSED, 2 MISSED, 3 no
+verdict (not run — it needs another person), 4 MET, 5 MET.
+
+**The diagnosis — one problem, two symptoms.** Both misses are the same
+record: the one written for a rate-limited request.
+
+*Stage: the rate-limit layer* — Flask-Limiter and the `rate_limited` error
+handler in `app.py`, which turn a request away *before* the `/submit` route
+runs. *Mechanism:* every refusal inside the route goes through `_refuse`, which
+writes `http_status`. A `429` never reaches the route, so it's recorded by the
+starter's separate handler instead — and when I added route and timing to every
+record in Milestone 3, I added them to that handler but not `http_status`. The
+record exists; it just can't be matched to the response it belongs to. That's
+criterion 2's 5 of 6, and the one unmatched line in criterion 1's 506 of 507.
+
+*The pattern under it:* a record is assembled in four places — the decision in
+`submit`, `_refuse`, the 429 handler, and `log_appeal` — and only `_refuse`
+wrote the HTTP status. That's also why the strict reading of criterion 1 found
+only 5 of 507: decisions and appeals never stated theirs either.
+
+**The one fix:** every audit record now states the HTTP status it answered
+with — `http_status` added in the three places that lacked it (`app.py`,
+`audit.py::log_appeal`). Nothing else changed: same harness, same requests,
+same three trials (`python run_capstone.py --trial N --label after`, output
+`results/capstone_trial_N_after.json`).
+
+| Criterion | Target | Before (runs 1 / 2 / 3) | After (runs 1 / 2 / 3) | Verdict after |
+|---|---|---|---|---|
+| 1. Every request leaves a record | 100% | 506/507 / 506/507 / 506/507 | 507/507 / 507/507 / 507/507 | **MET** |
+| — strict reading (stated fields only) | 100% | 5/507 / 5/507 / 5/507 | 507/507 / 507/507 / 507/507 | **MET** |
+| 2. Every failure kind leaves a record | 6 of 6 | 5/6 / 5/6 / 5/6 | 6/6 / 6/6 / 6/6 | **MET** |
+| 3. RUNNING.md, someone else | 0 questions | not run | not run | no verdict |
+| 4. Cold ≤ 10 s · p95 ≤ 100 ms | both | 1.74 s · 37.8 ms / 1.89 s · 36.7 ms / 1.77 s · 34.4 ms | 2.65 s · 38.7 ms / 1.75 s · 35.2 ms / 1.95 s · 35.6 ms | MET |
+| 5. Worker RSS < 1,572,864 KB | below | 1,182,544 KB / 1,153,056 KB / 1,179,552 KB | 1,182,656 KB / 1,191,168 KB / 1,187,728 KB | MET |
+
+*The 429 record after the fix — trial 1, `run_capstone.py::main`:*
+
+```json
+{"timestamp": "2026-11-16T21:53:43+00:00", "content_id": null, "creator_id": "cap1_burst", "guess": null, "model_score": null, "style_score": null, "combined_score": null, "status": "rejected", "event": "rejected", "reason": "rate_limited", "limit": "5 per 1 minute", "http_status": 429, "route": "/submit", "duration_ms": 0.2}
+```
+
+**Did it help?** Yes — both misses are now met in all three trials, under the
+strict reading as well as the generous one, and criteria 4 and 5 didn't move.
+The cost is one more field per record. The trial-1 cold start of 2.65 s is
+higher than the others (1.67–1.95 s before and after), but nothing in the fix
+runs before the model loads, and it's still a quarter of the target; I read it
+as noise, not a regression.
+
+**Targets I'd tighten.** Criteria 4 and 5 met with room to spare: p95 never
+went above 39 ms against 100, and memory peaked at 76% of the ceiling. 100 ms
+was set before I'd timed a run under gunicorn — I'd tighten p95 to **50 ms**,
+which every trial still meets but a slowdown of a third would break.
+
 ---
 
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**
