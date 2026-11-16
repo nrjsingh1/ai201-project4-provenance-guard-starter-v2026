@@ -1404,7 +1404,7 @@ Output: `results/capstone_trial_1.json`, `_2`, `_3`.
 |---|---|---|---|---|---|
 | 1. Every request leaves a record | 100% of ≥100 | 506/507 | 506/507 | 506/507 | **MISSED** |
 | 2. Every kind of failure leaves a record | 6 of 6 | 5/6 | 5/6 | 5/6 | **MISSED** |
-| 3. RUNNING.md works for someone else | 0 questions | not run | not run | not run | **no verdict yet** |
+| 3. RUNNING.md works for someone else | 0 questions | not run | not run | not run | not run yet — see The Improvement |
 | 4. Cold ≤ 10 s, p95 of next 100 ≤ 100 ms | both | cold 1.74 s · p95 37.8 ms | cold 1.89 s · p95 36.7 ms | cold 1.77 s · p95 34.4 ms | MET |
 | 5. Worker RSS after 500 < 1,572,864 KB | below | 1,182,544 KB | 1,153,056 KB | 1,179,552 KB | MET |
 
@@ -1418,7 +1418,8 @@ Output: `results/capstone_trial_1.json`, `_2`, `_3`.
    a record, but with no `http_status`. Same gap as criterion 1. The starter's
    `429` handler never wrote the field, and I didn't add it when I added the
    others in Milestone 3.
-3. **No verdict yet** — it needs a person who isn't me. Not run.
+3. **Not run at this point** — it needs a person who isn't me. It was revised
+   and run afterwards; the result is in The Improvement.
 4. **MET** — cold starts of 1.74–1.89 s against 10 s; p95 of 34.4–37.8 ms
    against 100 ms. The trials differ slightly, as separate runs should.
 5. **MET** — 1,153,056–1,182,544 KB, about 75% of the ceiling.
@@ -1496,12 +1497,28 @@ The second run log, same format:
 |---|---|---|---|---|---|
 | 1. Every request leaves a record | 100% of ≥100 | 507/507 | 507/507 | 507/507 | MET |
 | 2. Every kind of failure leaves a record | 6 of 6 | 6/6 | 6/6 | 6/6 | MET |
-| 3. RUNNING.md works for someone else | 0 questions | not run | not run | not run | **no verdict yet** |
+| 3. RUNNING.md works for someone else — original | 0 questions | not run | not run | not run | **no verdict** (no person available) |
+| 3. — revised: a no-context reader | 0 points needing outside help | 0 | 0 | 0 | **MET** (revised) |
 | 4. Cold ≤ 10 s, p95 of next 100 ≤ 100 ms | both | cold 2.65 s · p95 38.7 ms | cold 1.75 s · p95 35.2 ms | cold 1.95 s · p95 35.6 ms | MET |
 | 5. Worker RSS after 500 < 1,572,864 KB | below | 1,182,656 KB | 1,191,168 KB | 1,187,728 KB | MET |
 
 Criterion 1 under the strict reading (fields a record states outright) went
 from 5/507 to **507/507** in all three runs; before, it's in the table above.
+
+**Criterion 3, revised and run.** I couldn't find a person to follow
+`RUNNING.md` before grading, so I revised the criterion — the original stays in
+`criteria.md`, with the revision and its reason underneath, committed before
+any criterion 3 result (`revise capstone criterion 3 before running it`).
+Three separate AI agents, each with no context, an empty folder and an empty
+model cache, followed `RUNNING.md` from `git clone` to the `curl` example. All
+three reached a `label` with **zero** points where they needed something the
+file or an error message didn't give them. Full reports:
+`results/capstone_c3_readers.md`. This is weaker evidence than the original:
+all three ran on my machine, which already had Python 3.13 installed, and an
+AI agent isn't the human reader the original was written for. What they did
+notice: `RUNNING.md` doesn't say how to install a supported Python if you don't
+have one, and its "one WARN" from `test.py` didn't appear, because `test.py`
+looks for the model in `~/.cache` rather than wherever the cache really is.
 
 *The 429 record after the fix — trial 1, `run_capstone.py::main`:*
 
@@ -1518,12 +1535,14 @@ as noise, not a regression.
 
 **What's Still Broken**
 
-**Criterion 3 — no verdict.** It's the one criterion I couldn't run myself: it
-needs a person who isn't me to follow `RUNNING.md` from `git clone` to a
-labelled `/submit` without asking me anything. *What I'd do:* hand a classmate
-the repo link and count questions, three times with three people. *Why I
-stopped:* I haven't done it yet. My own fresh-clone run already failed once (on
-the Python version), so I'd expect a real reader to find something else.
+**Criterion 3 — the original still has no verdict.** It needs a person who
+isn't me to follow `RUNNING.md` without asking me anything; I couldn't find
+one before grading, so I ran a revised version with three no-context AI
+readers instead (MET, 0 / 0 / 0). *What I'd do:* hand three classmates on
+different machines the repo link and count their questions — and first add a
+line to `RUNNING.md` on installing Python 3.13 if it's missing, the one gap the
+stand-in readers named, since all three happened to have it. *Why I stopped:*
+nobody was available before grading.
 
 **Targets set too low.** Criteria 4 and 5 passed with room to spare. p95 never
 passed 39 ms against a 100 ms target — I'd tighten it to **50 ms**. Memory
