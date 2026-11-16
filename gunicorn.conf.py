@@ -20,6 +20,14 @@ bind = f"{app_config.HOST}:{app_config.PORT}"
 # each allow RATE_LIMIT_PER_MINUTE, quietly doubling the limit unit 8 tested.
 workers = 1
 
+# Logs go to files beside the audit log, not the terminal. The audit log records
+# decisions; these record every request, including ones that never became a
+# decision — a 404, a crash, a worker killed mid-request. %(L)s is how long the
+# request took, in seconds: the first /submit shows the model load.
+accesslog = str(app_config.LOG_DIR / "access.log")
+errorlog = str(app_config.LOG_DIR / "gunicorn.log")
+access_log_format = '%(t)s "%(r)s" %(s)s %(b)s %(L)ss %(h)s'
+
 # The first /submit loads the model, which takes 10–20 seconds on a laptop and
 # longer on an old one. gunicorn's default 30-second timeout would kill the
 # worker mid-load and the request would look like a crash.
