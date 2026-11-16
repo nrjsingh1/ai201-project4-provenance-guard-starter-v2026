@@ -1215,7 +1215,12 @@ honest writers whose work now competes with AI-written pieces that got through.
 
 <!-- ═══════════════════════ UNIT 9 — THE EXTENSION ═══════════════════════ -->
 
-## The Shape
+## Capstone
+
+Unit 9 extends Provenance Guard. Everything from here down is the capstone;
+the sections above are units 7 and 8.
+
+### The Shape
 
 **System:** Provenance Guard. **Shape: B — local, with logs.**
 
@@ -1248,7 +1253,7 @@ quietly double.
 **Size check:** one config file and one run command, plus the write-up of the
 arithmetic — well under ninety minutes of building.
 
-### Running it
+#### Running it
 
 ```bash
 gunicorn -c gunicorn.conf.py app:app
@@ -1272,7 +1277,7 @@ flood test gives the same `200 ×5, 429 ×10`
 "after" run — status, guess and all three scores.
 
 
-## Instrumentation
+### Instrumentation
 
 Every request to `/submit` and `/appeal` writes one JSON record to
 `logs/audit.jsonl` — decisions, refusals, rate limits and crashes alike. Each
@@ -1335,7 +1340,7 @@ why. The second run went clean from clone to a labelled `/submit`. One more
 thing a reader will meet: `logs/` is committed, so a fresh clone starts with my
 records in it and appends after them.
 
-## What It Costs
+### What It Costs
 
 No API, no key, no per-request bill: the cost is **compute on my machine**.
 
@@ -1357,8 +1362,27 @@ worker held **1.2 GB** (RSS from `ps`), up from 930 MB after the first. That,
 not the 34 ms, is why this runs locally: one worker needs more than twice a
 512 MB free tier before it has answered anyone.
 
+**A hundred people a day.** Say each writer submits a piece and revises it
+twice — three runs each:
 
-## Run Log — Unit 9
+```
+100 people × 3 submissions          = 300 runs a day
+300 runs × 33.8 ms                   = 10,140 ms ≈ 10 seconds of compute a day
++ 1 cold start a day × 2.9 s         ≈ 13 seconds a day in all
+memory: 1 worker × 1.2 GB, all day   = 1.2 GB held for 24 hours
+```
+
+So a hundred people a day costs about **13 seconds of compute and 1.2 GB of
+memory held around the clock** — the compute is nothing, and the memory is the
+whole bill. At 33.8 ms a run, one worker could do
+86,400 s ÷ 0.0338 s ≈ 2.5 million runs a day before speed mattered; the
+machine has to be big enough to hold the model long before it has to be fast.
+The audit log grows too: a decision record averages 850 bytes
+(`results/cost_run_unit9.jsonl`), so 300 × 850 B ≈ 255 KB a day, ≈ 93 MB a
+year, kept forever unless something rotates it.
+
+
+### Run Log — Unit 9
 
 `python run_capstone.py --trial 1`, `--trial 2`, `--trial 3`
 ([run_capstone.py](run_capstone.py)). Each trial starts its own gunicorn, sends
@@ -1434,7 +1458,7 @@ passing one (503). Labels are null on both; left out here.*
 ```
 
 
-## Diagnosis and the Fix — Unit 9
+### Diagnosis and the Fix — Unit 9
 
 **Verdicts, against the Milestone 4 targets:** 1 MISSED, 2 MISSED, 3 no
 verdict (not run — it needs another person), 4 MET, 5 MET.
@@ -1488,6 +1512,78 @@ as noise, not a regression.
 went above 39 ms against 100, and memory peaked at 76% of the ceiling. 100 ms
 was set before I'd timed a run under gunicorn — I'd tighten p95 to **50 ms**,
 which every trial still meets but a slowdown of a third would break.
+
+
+### What's Still Broken
+
+**Criterion 3 — no verdict.** It's the one criterion I couldn't run myself: it
+needs a person who isn't me to follow `RUNNING.md` from `git clone` to a
+labelled `/submit` without asking me anything. *What I'd do:* hand a classmate
+the repo link and count questions, three times with three people. *Why I
+stopped:* I haven't done it yet. My own fresh-clone run already failed once (on
+the Python version), so I'd expect a real reader to find something else.
+
+**Targets set too low.** Criteria 4 and 5 passed with room to spare. p95 never
+passed 39 ms against a 100 ms target — I'd tighten it to **50 ms**. Memory
+peaked at 76% of a 1.5 GiB ceiling; I'd tighten that to **1.3 GiB
+(1,363,149 KB)**, which every trial still meets but growth of about 15% would
+break.
+
+**What the criteria didn't test:**
+
+- **One worker means one request at a time.** Two writers submitting at once
+  queue behind each other. At 34 ms that's invisible; during a cold start it's
+  2–3 seconds of waiting for whoever comes second.
+- **The logs keep growing.** Nothing rotates `access.log` or `audit.jsonl`
+  (about 93 MB a year at a hundred people a day), and because `logs/` is
+  committed, a fresh clone starts with mine.
+- **The logs hold writers' words.** Every record keeps the first 60 characters
+  of the submitted text. That was useful for diagnosis and is the wrong default
+  for anyone else's writing.
+
+**What I'd do next, if this were real.** The first thing I'd change is the
+text preview in the logs: every record keeps the opening of a writer's work,
+in a file that is committed and kept forever. Speed and memory are already
+inside their targets; storing people's writing without asking is the one
+problem that gets worse with every request.
+
+### How I Used AI
+
+Claude Code built this extension with me in the repository: it wrote the
+gunicorn config, the instrumentation, the test harness and most of this
+write-up, ran every trial, and committed each step.
+
+**Moment 1 — the criteria (Milestone 4)**
+
+- *What I asked for:* to write my five capstone criteria.
+- *What came back:* it declined, because the milestone says the criteria have
+  to be mine, and asked me to choose each area and target from options. Then a
+  separate Claude instance, given only the criteria, ran the three self-check
+  questions on them.
+- *What I changed:* I chose all five areas and every target. The self-check
+  found loose definitions — "same second", "filled in", which process's memory
+  — and I had them tightened without changing a target before committing them
+  as `add capstone criteria`. The reason paragraphs were drafted from my
+  choices.
+
+**Moment 2 — testing my own instructions (Milestone 3)**
+
+- *What I asked for:* to follow `RUNNING.md` from a fresh clone.
+- *What came back:* the first run failed: on my machine plain `python3` is
+  3.15, which this project doesn't support, so `test.py` rejected the new
+  environment.
+- *What I changed:* `RUNNING.md` now names `python3.13` and says why, and the
+  second fresh run went clean.
+
+**Moment 3 — the misses (Milestones 5 and 6)**
+
+- *What I asked for:* to run three trials and diagnose what missed.
+- *What came back:* criteria 1 and 2 both missed on one cause — the 429 record
+  had no `http_status`, because rate limits are recorded by a handler that
+  runs before the route. Its own test harness also had two bugs, which it
+  found, fixed and reported before the three trials that count.
+- *What I changed:* I accepted the one fix — every record states its HTTP
+  status — and after it both criteria met in all three trials.
 
 ---
 
