@@ -1340,7 +1340,7 @@ records in it and appends after them.
 No API, no key, no per-request bill: the cost is **compute on my machine**.
 
 **One warm `/submit` costs 33.8 ms of server time** — the mean of ten runs
-(29.1 to 39.1 ms) on an Apple-silicon Mac, measured by `duration_ms` in each
+(29.1 to 39.1 ms) on an Apple M4 Pro Mac, measured by `duration_ms` in each
 audit record. From the client side, timed around the HTTP request, the same ten
 averaged 34.8 ms. The **first** request after start-up pays the model load:
 **2.9 seconds**.
