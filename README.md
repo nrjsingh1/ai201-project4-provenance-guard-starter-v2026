@@ -1213,6 +1213,41 @@ honest writers whose work now competes with AI-written pieces that got through.
      Do not delete and recreate this repository.
      ═════════════════════════════════════════════════════════════════════ -->
 
+<!-- ═══════════════════════ UNIT 9 — THE EXTENSION ═══════════════════════ -->
+
+## The Shape
+
+**System:** Provenance Guard. **Shape: B — local, with logs.**
+
+I'm running Provenance Guard the way a real deployment would, on my own
+machine: under `gunicorn` instead of Flask's development server, bound through
+the `HOST` and `PORT` environment variables, with one worker, and with
+gunicorn's access and error logs written to files in `logs/` beside the audit
+log. When it's done I'll claim one thing: the service runs under a production
+server and every request leaves a trace in a file. It stays local because it
+can't fit a free host. Measured on my machine, the gpt2 weights are 525 MB and
+torch is 626 MB on disk — over 1.1 GB before Flask starts, against a 512 MB
+free tier — and a free host has no persistent disk, so the model would download
+again after every idle spin-down. One worker, because each worker would load
+its own copy of gpt2, and because my rate limiter keeps its counts in memory:
+two workers would each allow 5 a minute, so the limit I tested in unit 8 would
+quietly double.
+
+**Out of scope:**
+
+- **Hosting it anywhere.** No Render, no free tier, no Docker image. The
+  arithmetic above already says it won't fit, and proving that by watching it
+  get killed isn't the work.
+- **Shrinking the model to make it fit.** Swapping gpt2 for something smaller
+  would change signal one, and every score, verdict and diagnosis from units 7
+  and 8 would stop applying.
+- **Fixing what unit 8 left broken.** No input validation, no third signal, no
+  per-IP limit, no Redis for shared rate-limit storage. Those are in What's
+  Still Broken; this unit runs the service as it is.
+
+**Size check:** one config file and one run command, plus the write-up of the
+arithmetic — well under ninety minutes of building.
+
 ---
 
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**
