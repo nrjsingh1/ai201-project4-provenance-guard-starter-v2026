@@ -112,6 +112,24 @@ def log_rejection(creator_id: str, reason: str, **extra) -> dict:
     })
 
 
+def log_error(creator_id: str, error_type: str, error_message: str, **extra) -> dict:
+    """
+    Record a request that crashed — an exception the route didn't expect.
+
+    A rejection is a request we chose to refuse; an error is one that broke.
+    They get different events so a log reader can count each.
+    """
+    return _append({
+        **_blank_entry(),
+        "creator_id": creator_id,
+        "event": "error",
+        "status": "error",
+        "error_type": error_type,
+        "error_message": error_message,
+        **extra,
+    })
+
+
 def _blank_entry() -> dict:
     """
     All nine fields, null where there was no decision.

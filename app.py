@@ -24,14 +24,67 @@ Routes:
     GET  /health      is the service up, and is the model loaded
 """
 
+import time
 import uuid
 
-from flask import Flask, jsonify, request
+from flask import Flask, g, jsonify, request
+from werkzeug.exceptions import HTTPException
 
 import audit
 import config
 
 app = Flask(__name__)
+
+
+# ── Instrumentation — unit 9 ──────────────────────────────────────────────────
+# Every audit record carries the route, how long the request took, and what
+# came in (size and a short preview, not the whole text). The audit log already
+# had the output — guess, scores, label — so together a record can be read back
+# without the code.
+
+PREVIEW_CHARS = 60
+
+
+@app.before_request
+def _start_timer():
+    g.started = time.perf_counter()
+
+
+def _trace() -> dict:
+    """Request fields every audit record gets: route, duration, input."""
+    fields = {
+        "route": request.path,
+        "duration_ms": round((time.perf_counter() - g.get("started", time.perf_counter())) * 1000, 1),
+    }
+    text = g.get("text")
+    if text is not None:
+        fields.update(text_length=len(text), text_words=len(text.split()),
+                      text_preview=text[:PREVIEW_CHARS])
+    return fields
+
+
+@app.errorhandler(Exception)
+def crashed(exc):
+    """
+    A request that crashed still leaves a record.
+
+    Without this a crash is a bare 500 and an absence in the audit log — the
+    failure you'd never find. HTTP errors (404, 405, 429) aren't crashes and
+    keep their normal responses.
+    """
+    if isinstance(exc, HTTPException):
+        return exc
+    payload = request.get_json(silent=True)
+    creator_id = payload.get("creator_id") if isinstance(payload, dict) else None
+    audit.log_error(
+        creator_id=creator_id if isinstance(creator_id, str) else "unknown",
+        error_type=type(exc).__name__,
+        error_message=str(exc)[:200],
+        http_status=500,
+        **_trace(),
+    )
+    return jsonify({"error": "internal_error",
+                    "message": "Something went wrong on our side. Nothing was decided."}), 500
 
 
 # ── Rate limiting — UNIT 8 ────────────────────────────────────────────────────
@@ -107,6 +160,7 @@ if config.RATE_LIMITING_ENABLED:
             creator_id=payload.get("creator_id", "unknown"),
             reason="rate_limited",
             limit=str(exc.description),
+            **_trace(),
         )
         return jsonify({
             "error": "rate_limited",
@@ -216,20 +270,20 @@ def submit():
     if not isinstance(text, str):
         return _refuse(400, "missing_text", "Include the writing to check as 'text'.", creator_id)
     text = text.strip()
+    g.text = text
     if not text:
         return _refuse(400, "empty_text", "The 'text' you sent is empty.", creator_id)
     if len(text) > MAX_TEXT_CHARS:
         return _refuse(413, "text_too_long",
-                       f"Text can be at most {MAX_TEXT_CHARS:,} characters.", creator_id,
-                       text_length=len(text))
+                       f"Text can be at most {MAX_TEXT_CHARS:,} characters.", creator_id)
 
     # Score before minting an id, so a text we can't score never gets one.
+    cold_start = detector._model is None
     try:
         model_score = detector.model_signal(text)
     except ValueError:
         return _refuse(422, "text_too_short",
-                       "That's too short to judge. A few sentences at least.", creator_id,
-                       text_length=len(text))
+                       "That's too short to judge. A few sentences at least.", creator_id)
     except detector.DetectorUnavailable:
         return _refuse(503, "detector_unavailable",
                        "The checker isn't available right now. Try again shortly.", creator_id)
@@ -252,6 +306,8 @@ def submit():
         label=label,
         status="decided",
         rule=_scoring_rule(),
+        cold_start=cold_start,
+        **_trace(),
     )
 
     return jsonify({
@@ -297,7 +353,8 @@ def _refuse(status: int, error: str, message: str, creator_id: str = "unknown", 
 
     No label, no guess — a text that couldn't be scored isn't called human or AI.
     """
-    audit.log_rejection(creator_id=creator_id, reason=error, http_status=status, **extra)
+    audit.log_rejection(creator_id=creator_id, reason=error, http_status=status,
+                        **{**_trace(), **extra})
     return jsonify({"error": error, "message": message}), status
 
 
