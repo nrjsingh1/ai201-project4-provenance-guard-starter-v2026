@@ -11,10 +11,15 @@ about **2 GB free disk** (torch and its friends ~1.2 GB, the gpt2 weights
 525 MB) · about **1 GB free RAM** · an internet connection the first time.
 No API key, no account.
 
+**Name the Python version.** Plain `python3` may be newer than 3.13 — on the
+machine this was written on it's 3.15, and `test.py` fails its version check.
+`python3 --version` tells you; if it says 3.14 or later, use `python3.13`
+(or `python3.12`, `python3.11`) in the venv line below.
+
 ```bash
 git clone https://github.com/nrjsingh1/ai201-project4-provenance-guard-starter-v2026.git
 cd ai201-project4-provenance-guard-starter-v2026
-python3 -m venv .venv
+python3.13 -m venv .venv            # or 3.12 / 3.11 — see above
 source .venv/bin/activate
 pip install -r requirements.txt     # a few minutes: torch is large
 python test.py                      # passes, with one WARN: model not downloaded
