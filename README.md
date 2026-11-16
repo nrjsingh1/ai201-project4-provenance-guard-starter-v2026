@@ -1271,6 +1271,92 @@ flood test gives the same `200 ×5, 429 ×10`
 (`results/run_2026-11-16_1624_unit9-gunicorn.md`) are identical to the unit 8
 "after" run — status, guess and all three scores.
 
+
+## Instrumentation
+
+Every request to `/submit` and `/appeal` writes one JSON record to
+`logs/audit.jsonl` — decisions, refusals, rate limits and crashes alike. Each
+has the nine audit fields from unit 8 plus what unit 9 added in `app.py`:
+
+| Field | What it records |
+|---|---|
+| `route` | Which endpoint |
+| `duration_ms` | Time inside the service, from the request arriving to the record being written |
+| `text_length`, `text_words`, `text_preview` | The input: its size and its first 60 characters — enough to recognise it, not the whole piece |
+| `cold_start` | `true` if this request had to load gpt2 first |
+| `event`, `error_type`, `error_message` | For anything that didn't become a decision: `rejected` (refused on purpose) or `error` (crashed) |
+| `rule` | The weights and thresholds the decision was made under |
+
+gunicorn also writes `logs/access.log` (every HTTP request, status, seconds)
+and `logs/gunicorn.log` (start-up, worker boots, worker kills).
+
+**Ten log entries** — the ten warm runs from the cost measurement below,
+`results/cost_run_unit9.jsonl`. Labels trimmed to 50 characters and the `rule`
+field left out here; both are whole in the file.
+
+```json
+{"timestamp": "2026-11-16T21:29:12+00:00", "content_id": "51f8e816-bd0a-46a3-9c28-acea993baa69", "creator_id": "cost_run_1", "guess": "ai", "model_score": 0.9005, "style_score": 0.972, "combined_score": 0.9363, "label": "This writing has a lot in common with text generat…", "status": "decided", "cold_start": false, "route": "/submit", "duration_ms": 36.8, "text_length": 696, "text_words": 97, "text_preview": "Artificial intelligence is transforming the way we live and "}
+{"timestamp": "2026-11-16T21:29:12+00:00", "content_id": "ecf9af85-b3c7-4b6f-9926-b18c90008065", "creator_id": "cost_run_2", "guess": "ai", "model_score": 0.941, "style_score": 0.8308, "combined_score": 0.8859, "label": "This writing has a lot in common with text generat…", "status": "decided", "cold_start": false, "route": "/submit", "duration_ms": 31.4, "text_length": 711, "text_words": 99, "text_preview": "Climate change represents one of the most pressing challenge"}
+{"timestamp": "2026-11-16T21:29:12+00:00", "content_id": "f3a08372-ec89-4e84-b3a9-e5fde5fd43ec", "creator_id": "cost_run_3", "guess": "ai", "model_score": 0.8079, "style_score": 1.0, "combined_score": 0.904, "label": "This writing has a lot in common with text generat…", "status": "decided", "cold_start": false, "route": "/submit", "duration_ms": 29.7, "text_length": 697, "text_words": 96, "text_preview": "Effective time management is an essential skill for achievin"}
+{"timestamp": "2026-11-16T21:29:12+00:00", "content_id": "95792984-f847-4826-b7fb-73a8b4f2e498", "creator_id": "cost_run_4", "guess": "ai", "model_score": 0.8268, "style_score": 0.8336, "combined_score": 0.8302, "label": "This writing has a lot in common with text generat…", "status": "decided", "cold_start": false, "route": "/submit", "duration_ms": 29.9, "text_length": 654, "text_words": 93, "text_preview": "Reading offers a wide range of benefits for people of all ag"}
+{"timestamp": "2026-11-16T21:29:12+00:00", "content_id": "07f44855-bede-4532-8cc6-4ec26a0ab754", "creator_id": "cost_run_5", "guess": "ai", "model_score": 0.851, "style_score": 0.8388, "combined_score": 0.8449, "label": "This writing has a lot in common with text generat…", "status": "decided", "cold_start": false, "route": "/submit", "duration_ms": 29.1, "text_length": 657, "text_words": 93, "text_preview": "Remote work has become increasingly popular in recent years,"}
+{"timestamp": "2026-11-16T21:29:12+00:00", "content_id": "180b83e4-893b-4955-91fd-55a27562a380", "creator_id": "cost_run_6", "guess": "human", "model_score": 0.4538, "style_score": 0.0611, "combined_score": 0.2575, "label": "This reads like it was written by a person. Our au…", "status": "decided", "cold_start": false, "route": "/submit", "duration_ms": 37.2, "text_length": 556, "text_words": 110, "text_preview": "You don't know about me without you have read a book by the "}
+{"timestamp": "2026-11-16T21:29:12+00:00", "content_id": "954eba67-4f1c-49e5-93d0-4cf4c0a58790", "creator_id": "cost_run_7", "guess": "human", "model_score": 0.3792, "style_score": 0.0645, "combined_score": 0.2218, "label": "This reads like it was written by a person. Our au…", "status": "decided", "cold_start": false, "route": "/submit", "duration_ms": 33.8, "text_length": 592, "text_words": 113, "text_preview": "Call me Ishmael. Some years ago - never mind how long precis"}
+{"timestamp": "2026-11-16T21:29:12+00:00", "content_id": "7f63ec31-9b67-48a3-bb02-5b976c3c30d4", "creator_id": "cost_run_8", "guess": "unsure", "model_score": 0.6238, "style_score": 0.2324, "combined_score": 0.4281, "label": "Our automated check couldn't tell whether this was…", "status": "decided", "cold_start": false, "route": "/submit", "duration_ms": 38.0, "text_length": 539, "text_words": 98, "text_preview": "Marley was dead: to begin with. There is no doubt whatever a"}
+{"timestamp": "2026-11-16T21:29:12+00:00", "content_id": "8beff339-3b24-4f00-9cf5-4339e68158c0", "creator_id": "cost_run_9", "guess": "unsure", "model_score": 0.7251, "style_score": 0.2793, "combined_score": 0.5022, "label": "Our automated check couldn't tell whether this was…", "status": "decided", "cold_start": false, "route": "/submit", "duration_ms": 33.4, "text_length": 611, "text_words": 117, "text_preview": "It is a truth universally acknowledged, that a single man in"}
+{"timestamp": "2026-11-16T21:29:12+00:00", "content_id": "e29ebe42-2758-42d4-8f0d-b95dd4efe3b5", "creator_id": "cost_run_10", "guess": "unsure", "model_score": 0.6673, "style_score": 0.4924, "combined_score": 0.5798, "label": "Our automated check couldn't tell whether this was…", "status": "decided", "cold_start": false, "route": "/submit", "duration_ms": 39.1, "text_length": 790, "text_words": 141, "text_preview": "When on board H.M.S. Beagle, as naturalist, I was much struc"}
+```
+
+**The cold start** that came before them — same record shape, 87× slower:
+
+```json
+{"timestamp": "2026-11-16T21:29:12+00:00", "content_id": "7eceff50-2bd5-4b36-88fb-4089c57b20d7", "creator_id": "cost_cold", "guess": "unsure", "model_score": 0.6544, "style_score": 0.4782, "combined_score": 0.5663, "label": "Our automated check couldn't tell whether this was…", "status": "decided", "cold_start": true, "route": "/submit", "duration_ms": 2931.0, "text_length": 513, "text_words": 85, "text_preview": "AI is changing the way we live and work. It offers a lot of "}
+```
+
+**Failed runs.** A refused input, a crash, and a real outage. The crash was
+forced: through Flask's test client, with signal two replaced by a function
+that divides by zero, because nothing in the service fails on demand. The
+outage is real: the service pointed at a model name that doesn't exist, with
+downloads turned off.
+
+```json
+{"timestamp": "2026-11-16T21:26:16+00:00", "content_id": null, "creator_id": "unit9-test", "guess": null, "model_score": null, "style_score": null, "combined_score": null, "label": null, "status": "rejected", "event": "rejected", "reason": "empty_text", "http_status": 400, "route": "/submit", "duration_ms": 0.2, "text_length": 0, "text_words": 0, "text_preview": ""}
+{"timestamp": "2026-11-16T21:26:16+00:00", "content_id": null, "creator_id": "unit9-crash-test", "guess": null, "model_score": null, "style_score": null, "combined_score": null, "label": null, "status": "error", "event": "error", "error_type": "ZeroDivisionError", "error_message": "division by zero", "http_status": 500, "route": "/submit", "duration_ms": 19.9, "text_length": 84, "text_words": 16, "text_preview": "This text is long enough to reach the second signal, which w"}
+{"timestamp": "2026-11-16T21:26:24+00:00", "content_id": null, "creator_id": "unit9-no-model", "guess": null, "model_score": null, "style_score": null, "combined_score": null, "label": null, "status": "rejected", "event": "rejected", "reason": "detector_unavailable", "http_status": 503, "route": "/submit", "duration_ms": 1154.3, "text_length": 68, "text_words": 12, "text_preview": "This should fail because the detector model cannot be loaded"}
+```
+
+Before unit 9, the crash would have been a bare `500` and no record at all.
+
+**Testing `RUNNING.md` on myself.** I cloned the repo into an empty folder,
+with an empty model cache, and followed it line by line. It failed the first
+time: on my machine plain `python3` is **3.15**, so `python3 -m venv` built an
+environment `test.py` rejects. `RUNNING.md` now names `python3.13` and says
+why. The second run went clean from clone to a labelled `/submit`. One more
+thing a reader will meet: `logs/` is committed, so a fresh clone starts with my
+records in it and appends after them.
+
+## What It Costs
+
+No API, no key, no per-request bill: the cost is **compute on my machine**.
+
+**One warm `/submit` costs 33.8 ms of server time** — the mean of ten runs
+(29.1 to 39.1 ms) on an Apple-silicon Mac, measured by `duration_ms` in each
+audit record. From the client side, timed around the HTTP request, the same ten
+averaged 34.8 ms. The **first** request after start-up pays the model load:
+**2.9 seconds**.
+
+**How I measured it:** gunicorn with one worker on port 5050; one submission to
+warm the model up; then ten different texts — my five clearly-AI and five
+clearly-human evaluation samples, 93 to 141 words — each under its own
+`creator_id` so the rate limiter stayed out of it. Server time is read from the
+audit records (`results/cost_run_unit9.jsonl`); client time from
+`time.perf_counter()` around each request.
+
+**The cost that matters more is memory.** After those eleven requests the
+worker held **1.2 GB** (RSS from `ps`), up from 930 MB after the first. That,
+not the 34 ms, is why this runs locally: one worker needs more than twice a
+512 MB free tier before it has answered anyone.
+
 ---
 
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**
